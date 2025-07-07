@@ -316,42 +316,50 @@ class AgentScanner:
             # 动态加载模块
             module_path = agent_path / entry_point
             
-            # 将 agent 目录添加到 sys.path，确保能正确导入相对模块
+            # 将 agent 目录及其src目录添加到 sys.path，确保能正确导入相对模块
             agent_path_str = str(agent_path)
-            path_added = False
+            src_path_str = str(agent_path / "src") if (agent_path / "src").exists() else None
+            
+            paths_added = []
+            
             if agent_path_str not in sys.path:
                 sys.path.insert(0, agent_path_str)
-                path_added = True
+                paths_added.append(agent_path_str)
                 logger.debug(f"添加路径到 sys.path: {agent_path_str}")
             
-            # 生成模块名称，处理路径中的斜杠
-            module_name_parts = [agent_name]
-            if "/" in entry_point:
-                # 如果是路径形式，如 "src/agent/graph.py"
-                path_parts = entry_point.replace("/", ".").replace(".py", "")
-                module_name_parts.append(path_parts)
-            else:
-                # 如果是简单文件名，如 "graph.py"
-                module_name_parts.append(entry_point.replace(".py", ""))
+            if src_path_str and src_path_str not in sys.path:
+                sys.path.insert(0, src_path_str)
+                paths_added.append(src_path_str)
+                logger.debug(f"添加src路径到 sys.path: {src_path_str}")
             
-            module_name = ".".join(module_name_parts)
+            # 生成模块名称，处理路径中的斜杠
+            module_name = f"agent_{agent_name}_{entry_point.replace('/', '_').replace('.py', '')}"
             
             spec = importlib.util.spec_from_file_location(module_name, module_path)
             
             if spec is None or spec.loader is None:
                 logger.error(f"无法创建模块规范: {module_path}")
                 # 清理添加的路径
-                if path_added and agent_path_str in sys.path:
-                    sys.path.remove(agent_path_str)
+                for path in paths_added:
+                    if path in sys.path:
+                        sys.path.remove(path)
                 return None
                 
             module = importlib.util.module_from_spec(spec)
             
             # 将模块添加到 sys.modules
-            sys.modules[module_name] = module
+            if module_name not in sys.modules:
+                sys.modules[module_name] = module
             
-            # 执行模块
-            spec.loader.exec_module(module)
+            # 执行模块 - 在这里设置适当的环境变量和上下文
+            old_cwd = os.getcwd()
+            try:
+                # 切换到agent目录，确保相对路径正确
+                os.chdir(agent_path)
+                spec.loader.exec_module(module)
+            finally:
+                # 恢复原始工作目录
+                os.chdir(old_cwd)
             
             # 缓存模块
             agent_info["module"] = module
@@ -361,9 +369,13 @@ class AgentScanner:
             
         except Exception as e:
             logger.error(f"加载 agent {agent_name} 失败: {e}")
+            import traceback
+            logger.debug(f"详细错误信息: {traceback.format_exc()}")
             # 清理添加的路径（如果失败了）
-            if 'path_added' in locals() and path_added and 'agent_path_str' in locals() and agent_path_str in sys.path:
-                sys.path.remove(agent_path_str)
+            if 'paths_added' in locals():
+                for path in paths_added:
+                    if path in sys.path:
+                        sys.path.remove(path)
             return None
 
 

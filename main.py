@@ -3,6 +3,7 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Any
+import uuid
 from rich.console import Console
 from rich.text import Text
 from rich.panel import Panel
@@ -29,6 +30,7 @@ conversation_history = []
 current_agent = None
 available_agents = []
 prompt_style = "modern"  # 当前提示符风格
+current_thread_id = str(uuid.uuid4())  # 当前对话的线程ID
 
 
 def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> str:
@@ -159,20 +161,28 @@ def create_message_state(user_input: str, message_history: List[Dict] = None) ->
         # 添加当前用户输入
         messages.append(HumanMessage(content=user_input))
         
-        return {"messages": messages}
+        return {
+            "messages": messages,
+            "confirmed": None,
+            "user_input": None
+        }
         
     except ImportError:
         # 简单格式兼容
         messages = message_history or []
         messages.append({"role": "user", "content": user_input})
-        return {"messages": messages}
+        return {
+            "messages": messages,
+            "confirmed": None,
+            "user_input": None
+        }
 
 
 async def stream_agent_response(user_input: str) -> Optional[str]:
     """
-    流式调用 agent 并处理响应
+    流式调用 agent 并处理响应，支持中断功能
     """
-    global current_agent, conversation_history
+    global current_agent, conversation_history, current_thread_id
     
     if not current_agent:
         console.print("❌ [red]没有可用的 agent[/red]")
@@ -194,19 +204,116 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     # 构造输入状态
     state = create_message_state(user_input, conversation_history)
     
+    # 配置线程ID
+    config = {"configurable": {"thread_id": current_thread_id}}
+    
     # 用于存储完整响应
     full_response = ""
+    current_interrupt = None
     
     with console.status(f"[cyan]{current_agent}[/cyan] 正在思考...", spinner="dots"):
         try:
-            # 调用 agent
-            result = await graph.ainvoke(state)
-            if isinstance(result, dict) and 'messages' in result:
-                messages = result['messages']
-                if messages and hasattr(messages[-1], 'content'):
-                    full_response = messages[-1].content
+            # 使用stream方法调用 agent，支持中断
+            async for chunk in graph.astream(state, config=config):
+                # 检查是否有中断
+                if '__interrupt__' in chunk:
+                    current_interrupt = chunk['__interrupt__'][0]
+                    break
+                
+                # 处理正常的消息块  
+                for node_name, node_output in chunk.items():
+                    # 跳过特殊键如 __interrupt__
+                    if node_name.startswith('__'):
+                        continue
+                    if isinstance(node_output, dict) and 'messages' in node_output:
+                        for message in node_output['messages']:
+                            if hasattr(message, 'content'):
+                                full_response += message.content
+                            elif isinstance(message, dict) and 'content' in message:
+                                full_response += message['content']
+                            
         except Exception as invoke_error:
             console.print(f"❌ [red]调用 agent 失败: {invoke_error}[/red]")
+            return None
+    
+    # 如果有中断，在 status 上下文外处理用户确认
+    if current_interrupt:
+        interrupt_data = current_interrupt.value
+        
+        # 显示中断信息
+        console.print()
+        console.print(Panel(
+            f"[yellow]📋 {interrupt_data.get('message', '')}[/yellow]\n\n"
+            f"[cyan]❓ {interrupt_data.get('question', '请确认')}[/cyan]",
+            title="🤔 需要您的确认",
+            border_style="yellow",
+            padding=(1, 2)
+        ))
+        console.print()
+        
+        # 获取用户输入 - 现在在 status 上下文外
+        try:
+            user_confirmation = Prompt.ask(
+                "[bold green]您确认要处理这个请求吗？ (yes/no)[/bold green]",
+                choices=["yes", "y", "是", "确认", "no", "n", "否", "取消"],
+                default="yes",
+                show_choices=False
+            ).strip().lower()
+            
+            # 标准化用户输入
+            if user_confirmation in ["yes", "y", "是", "确认"]:
+                user_confirmation = "yes"
+            else:
+                user_confirmation = "no"
+                
+            console.print(f"[dim]您的选择: {user_confirmation}[/dim]")
+            console.print()
+            
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[yellow]操作已取消[/yellow]")
+            return None
+        
+        # 导入Command并继续执行
+        try:
+            from langgraph.types import Command
+            
+            # 使用新的 status 显示继续执行
+            with console.status(f"[cyan]{current_agent}[/cyan] 正在处理您的确认...", spinner="dots"):
+                # 重置响应，开始收集恢复后的内容
+                resume_response = ""
+                async for chunk in graph.astream(
+                    Command(resume=user_confirmation), 
+                    config=config
+                ):
+                    # 调试输出
+                    # console.print(f"[dim]收到 chunk: {chunk}[/dim]")
+                    
+                    # 处理恢复后的消息块
+                    for node_name, node_output in chunk.items():
+                        # 跳过特殊键如 __interrupt__
+                        if node_name.startswith('__'):
+                            continue
+                        if isinstance(node_output, dict) and 'messages' in node_output:
+                            for message in node_output['messages']:
+                                if hasattr(message, 'content'):
+                                    resume_response += message.content
+                                elif isinstance(message, dict) and 'content' in message:
+                                    resume_response += message['content']
+                
+                # 将恢复后的响应设置为最终响应
+                full_response = resume_response
+                
+                # 调试输出
+                if not full_response.strip():
+                    console.print("[yellow]⚠️ 警告: Agent 没有返回内容[/yellow]")
+            
+        except ImportError:
+            console.print("❌ [red]无法导入Command，请检查langgraph版本[/red]")
+            return None
+        except Exception as resume_error:
+            console.print(f"❌ [red]恢复执行失败: {resume_error}[/red]")
+            import traceback
+            console.print(f"[dim]错误详情: {traceback.format_exc()}[/dim]")
             return None
     
     # 显示完整响应
@@ -315,7 +422,11 @@ async def handle_command(command: str) -> bool:
             "  • [green]/agents[/green] - 显示可用的 agents\n"
             "  • [green]/agent <name>[/green] - 切换到指定的 agent\n"
             "  • [green]/history[/green] - 显示对话历史\n"
-            "  • [green]/reset[/green] - 清空对话历史\n\n"
+            "  • [green]/reset[/green] - 清空对话历史并重置对话线程\n\n"
+            "🤔 [yellow]中断功能：[/yellow]\n"
+            "  • Agent 会在需要时请求您的确认\n"
+            "  • 输入 'yes'、'y'、'是'、'确认' 来同意\n"
+            "  • 输入其他内容来取消操作\n\n"
             "💡 [yellow]提示：[/yellow] 直接输入消息与当前 agent 对话",
             title="🔧 帮助",
             border_style="cyan"
@@ -359,7 +470,9 @@ async def handle_command(command: str) -> bool:
             console.print("📝 [yellow]暂无对话历史[/yellow]")
     elif command.lower() in ['/reset', 'reset']:
         conversation_history.clear()
-        console.print("🔄 [green]对话历史已清空[/green]")
+        global current_thread_id
+        current_thread_id = str(uuid.uuid4())  # 重置线程ID
+        console.print("🔄 [green]对话历史已清空，已开始新的对话线程[/green]")
     elif command.lower() in ['/style', 'style']:
         # 显示当前风格和可用风格
         styles = {
