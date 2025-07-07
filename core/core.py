@@ -101,6 +101,7 @@ class AgentScanner:
     def _validate_langgraph_structure(self, agent_path: Path) -> bool:
         """
         验证是否符合标准的 Langgraph agent 结构
+        主要通过解析 langgraph.json 文件来判断，这样更有通用性
         
         Args:
             agent_path: agent 文件夹路径
@@ -108,38 +109,59 @@ class AgentScanner:
         Returns:
             bool: 是否有效
         """
-        # 检查是否有 langgraph.json 配置文件（标准 Langgraph 项目）
+        # 检查是否有 langgraph.json 配置文件（标准 Langgraph 项目的必需文件）
         langgraph_config = agent_path / "langgraph.json"
-        if langgraph_config.exists():
-            logger.debug("发现 langgraph.json 配置文件")
-            return True
-        
-        # 检查简单的 agent 结构（直接包含 agent 文件）
-        required_files = [
-            "__init__.py",  # Python 包标识
-        ]
-        
-        # 检查必需文件
-        for file_name in required_files:
-            if not (agent_path / file_name).exists():
-                logger.debug(f"缺少必需文件: {file_name}")
-                return False
-        
-        # 检查是否有常见的 Langgraph agent 文件
-        common_files = [
-            "agent.py",
-            "graph.py", 
-            "main.py",
-            "workflow.py"
-        ]
-        
-        has_agent_file = any((agent_path / file_name).exists() for file_name in common_files)
-        
-        if not has_agent_file:
-            logger.debug("未找到常见的 agent 入口文件")
+        if not langgraph_config.exists():
+            logger.debug(f"未找到 langgraph.json 配置文件: {langgraph_config}")
             return False
+        
+        # 解析并验证 langgraph.json 的内容
+        try:
+            import json
+            with open(langgraph_config, 'r', encoding='utf-8') as f:
+                config = json.load(f)
             
-        return True
+            # 验证基本的 langgraph.json 结构
+            if not isinstance(config, dict):
+                logger.debug("langgraph.json 内容不是有效的JSON对象")
+                return False
+            
+            # 检查是否有 graphs 配置（Langgraph 的核心配置）
+            graphs = config.get("graphs", {})
+            if not graphs:
+                logger.debug("langgraph.json 中未找到 graphs 配置")
+                return False
+            
+            # 验证 graphs 配置的有效性
+            for graph_name, graph_config in graphs.items():
+                if not isinstance(graph_config, str):
+                    logger.debug(f"Graph配置 {graph_name} 格式无效: {graph_config}")
+                    return False
+                
+                # 验证graph配置指向的文件是否存在
+                if ":" in graph_config:
+                    file_path = graph_config.split(":")[0]
+                else:
+                    file_path = graph_config
+                
+                # 移除开头的 "./" 
+                if file_path.startswith("./"):
+                    file_path = file_path[2:]
+                
+                full_path = agent_path / file_path
+                if not full_path.exists():
+                    logger.debug(f"Graph配置指向的文件不存在: {full_path}")
+                    return False
+            
+            logger.debug("langgraph.json 验证通过")
+            return True
+            
+        except json.JSONDecodeError as e:
+            logger.debug(f"langgraph.json 格式错误: {e}")
+            return False
+        except Exception as e:
+            logger.debug(f"验证 langgraph.json 时出错: {e}")
+            return False
     
     def _load_agent_config(self, agent_path: Path) -> Dict[str, Any]:
         """
@@ -240,6 +262,7 @@ class AgentScanner:
     def _scan_dependencies(self, agent_path: Path) -> List[str]:
         """
         扫描 agent 的依赖
+        优先从 langgraph.json 中解析依赖，然后检查其他依赖文件
         
         Args:
             agent_path: agent 文件夹路径
@@ -249,16 +272,88 @@ class AgentScanner:
         """
         dependencies = []
         
+        # 首先从 langgraph.json 中解析依赖
+        langgraph_config = agent_path / "langgraph.json"
+        if langgraph_config.exists():
+            try:
+                import json
+                with open(langgraph_config, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # 检查 dependencies 字段
+                if "dependencies" in config:
+                    deps = config["dependencies"]
+                    if isinstance(deps, list):
+                        dependencies.extend(deps)
+                        logger.debug(f"从 langgraph.json 解析到依赖: {deps}")
+                    elif isinstance(deps, dict):
+                        # 如果是字典格式，可能包含版本信息
+                        for pkg, version in deps.items():
+                            if version:
+                                dependencies.append(f"{pkg}=={version}")
+                            else:
+                                dependencies.append(pkg)
+                        logger.debug(f"从 langgraph.json 解析到依赖字典: {deps}")
+                
+                # 检查环境变量或其他配置中的依赖
+                env_config = config.get("env", {})
+                if isinstance(env_config, dict):
+                    # 一些agent可能在env配置中指定Python路径或其他依赖
+                    python_deps = env_config.get("python_dependencies", [])
+                    if isinstance(python_deps, list):
+                        dependencies.extend(python_deps)
+                        
+            except Exception as e:
+                logger.warning(f"从 langgraph.json 解析依赖失败: {e}")
+        
         # 检查 requirements.txt
         req_file = agent_path / "requirements.txt"
         if req_file.exists():
             try:
                 with open(req_file, 'r', encoding='utf-8') as f:
-                    dependencies.extend([line.strip() for line in f if line.strip() and not line.startswith('#')])
+                    req_deps = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                    dependencies.extend(req_deps)
+                    logger.debug(f"从 requirements.txt 解析到依赖: {req_deps}")
             except Exception as e:
-                logger.warning(f"读取依赖文件失败: {e}")
+                logger.warning(f"读取 requirements.txt 失败: {e}")
+        
+        # 检查 pyproject.toml 文件（现代Python项目依赖管理）
+        pyproject_file = agent_path / "pyproject.toml"
+        if pyproject_file.exists():
+            try:
+                # 尝试解析 pyproject.toml（如果有 toml 库的话）
+                try:
+                    import tomllib  # Python 3.11+
+                except ImportError:
+                    try:
+                        import tomli as tomllib  # fallback
+                    except ImportError:
+                        tomllib = None
                 
-        return dependencies
+                if tomllib:
+                    with open(pyproject_file, 'rb') as f:
+                        pyproject_data = tomllib.load(f)
+                    
+                    # 检查项目依赖
+                    project_deps = pyproject_data.get("project", {}).get("dependencies", [])
+                    if project_deps:
+                        dependencies.extend(project_deps)
+                        logger.debug(f"从 pyproject.toml 解析到项目依赖: {project_deps}")
+                    
+                    # 检查工具相关依赖（如 uv）
+                    tool_deps = pyproject_data.get("tool", {})
+                    for tool_name, tool_config in tool_deps.items():
+                        if isinstance(tool_config, dict) and "dependencies" in tool_config:
+                            tool_dependencies = tool_config["dependencies"]
+                            if isinstance(tool_dependencies, list):
+                                dependencies.extend(tool_dependencies)
+                                logger.debug(f"从 pyproject.toml [{tool_name}] 解析到依赖: {tool_dependencies}")
+                
+            except Exception as e:
+                logger.warning(f"读取 pyproject.toml 失败: {e}")
+        
+        # 去重并返回
+        return list(set(dependencies)) if dependencies else []
     
     def get_agent_list(self) -> List[str]:
         """

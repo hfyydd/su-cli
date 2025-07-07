@@ -9,4 +9,5 @@ dependencies = [
     "langchain[openai]>=0.3.25",
     "langgraph>=0.4.8",
     "langgraph-cli[inmem]>=0.3.3",
+    "jinja2>=3.1.6",
 ]
