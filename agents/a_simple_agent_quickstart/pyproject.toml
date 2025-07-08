@@ -8,4 +8,6 @@ dependencies = [
     "langchain[openai]>=0.3.25",
     "langgraph>=0.4.8",
     "langgraph-cli[inmem]>=0.3.3",
+    "mcp>=0.6.0",
+    "langchain-mcp-adapters>=0.1.5",
 ]

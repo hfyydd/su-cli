@@ -1,5 +1,5 @@
+
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt, Command
 from langgraph.checkpoint.memory import MemorySaver
 from src.agent.state import State
 from langchain_openai import ChatOpenAI
@@ -21,82 +21,70 @@ llm = ChatOpenAI(
 )
 
 async def chatbot_node(state: State):
-    """聊天机器人节点，包含用户确认中断"""
+    """聊天机器人节点"""
     try:
-        # 获取用户的最新消息
-        user_message = state['messages'][-1].content if state['messages'] else ""
-        
-        # 触发中断，请求用户确认
-        # interrupt() 函数会返回通过 Command(resume=value) 提供的值
-        user_confirmation = interrupt({
-            "message": f"用户消息: {user_message}",
-            "question": "您确认要处理这个请求吗？(yes/no)",
-            "type": "confirmation"
-        })
-        
-        # 检查用户确认 - 使用标准的 [ACCEPTED]/[REJECTED] 格式
-        confirmation_str = str(user_confirmation)
-        if confirmation_str.startswith("[REJECTED]"):
-            # 用户拒绝，返回取消消息
-            from langchain_core.messages import AIMessage
-            return {
-                "messages": [AIMessage(content="好的，我已取消处理这个请求。")]
-            }
-        elif not confirmation_str.startswith("[ACCEPTED]"):
-            # 如果不是标准格式，也作为拒绝处理
-            from langchain_core.messages import AIMessage
-            return {
-                "messages": [AIMessage(content="输入格式不正确，已取消处理。")]
-            }
-        
+        print("🤖 chatbot节点处理中...")
+        print(f"输入消息: {[msg.content for msg in state['messages']]}")
+
         # 创建agent，添加系统提示
         agent = create_agent("chatbot", llm, [get_current_time], system_prompt)
         
         # create_react_agent需要传入整个状态，而不是消息列表
         response = await agent.ainvoke(state)
         
+        print(f"✅ Agent响应类型: {type(response)}")
+        
         # create_react_agent返回字典格式 {'messages': [...]}
         # 需要提取新消息（agent的回复），而不是替换整个消息列表
         if isinstance(response, dict) and 'messages' in response:
             # 获取新消息（通常是最后一条，即agent的回复）
             new_messages = response['messages'][len(state['messages']):]
+            print(f"✅ 新消息数量: {len(new_messages)}")
+            for msg in new_messages:
+                print(f"✅ 模型回复: {msg.content[:100]}...")
+            
             return {"messages": new_messages}
         else:
             # 如果格式不符合预期，直接返回
+            print(f"⚠️ 意外的响应格式: {response}")
             return response
         
     except Exception as e:
-        # 检查是否是中断异常，如果是则重新抛出，不显示错误
-        if "Interrupt" in str(type(e)) or "interrupt" in str(e).lower():
-            raise e
-        # 只对其他异常显示错误信息
         print(f"❌ chatbot节点执行失败: {e}")
         raise e
 
-# 构建LangGraph图
-builder = StateGraph(State)
 
-# 添加节点
-builder.add_node("chatbot", chatbot_node)
+def _build_base_graph():
+    """构建基础图结构"""
+    builder = StateGraph(State)
+    
+    # 添加节点
+    builder.add_node("chatbot", chatbot_node)
+    
+    # 添加边
+    builder.add_edge(START, "chatbot")
+    builder.add_edge("chatbot", END)
+    
+    return builder
 
-# 添加边
-builder.add_edge(START, "chatbot")
-builder.add_edge("chatbot", END)
-
-# 创建checkpointer（生产环境中应使用持久化存储）
-checkpointer = MemorySaver()
-
-# 编译图，添加checkpointer以支持中断功能
-graph = builder.compile(checkpointer=checkpointer)
 
 def build_graph():
     """构建不带内存的图"""
+    builder = _build_base_graph()
     return builder.compile()
 
+
 def build_graph_with_memory():
-    """构建带内存的图（支持中断恢复）"""
+    """构建带内存的图"""
+    # 使用持久内存保存对话历史
     memory = MemorySaver()
+    
+    builder = _build_base_graph()
     return builder.compile(checkpointer=memory)
+
+
+# 默认图（不带内存）
+graph = build_graph()
 
 
 
