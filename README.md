@@ -141,7 +141,39 @@ user_input = "[ACCEPTED] 用户确认继续执行计划"
 user_input = "[REJECTED] 用户拒绝执行计划"
 ```
 
-您的 Agent 应该能够识别和处理这些格式。
+**标准的处理代码示例：**
+
+```python
+async def your_node_with_interrupt(state: State):
+    """包含中断确认的节点"""
+    from langgraph.types import interrupt
+    from langchain_core.messages import AIMessage
+    
+    # 触发中断，请求用户确认
+    user_confirmation = interrupt({
+        "message": "您的确认消息",
+        "question": "您确认要处理这个请求吗？(yes/no)",
+        "type": "confirmation"
+    })
+    
+    # 标准格式处理
+    confirmation_str = str(user_confirmation)
+    if confirmation_str.startswith("[REJECTED]"):
+        # 用户拒绝，返回取消消息
+        return {
+            "messages": [AIMessage(content="好的，我已取消处理这个请求。")]
+        }
+    elif not confirmation_str.startswith("[ACCEPTED]"):
+        # 兼容旧格式：如果不是标准格式，按原有逻辑处理
+        if confirmation_str.lower() not in ['yes', 'y', '是', '确认']:
+            return {
+                "messages": [AIMessage(content="好的，我已取消处理这个请求。")]
+            }
+    
+    # 用户确认，继续处理逻辑
+    # ... 您的处理代码
+    return {"messages": [AIMessage(content="处理完成！")]}
+```
 
 ##### 3. 响应输出格式
 
@@ -183,7 +215,12 @@ agents/your-agent/
 
 ##### 5. 示例实现
 
-参考 `agents/deer-flow` 的实现，它是一个完整的支持中断恢复的 Agent 示例。
+参考以下 Agent 的实现，它们都是支持中断恢复功能的完整示例：
+
+- **`agents/deer-flow`** - 高级研究 Agent，复杂的多节点工作流
+- **`agents/a_simple_agent_quickstart`** - 简单聊天 Agent，基础的中断处理示例
+
+两个示例都正确实现了标准的 `[ACCEPTED]`/`[REJECTED]` 中断协议。
 
 #### 📋 测试中断功能
 
@@ -243,8 +280,10 @@ async for chunk in graph.astream(
 如果您正在开发新的 Agent 并希望支持中断恢复功能，**请务必遵循上述技术规范**：
 
 1. **必须实现** `build_graph_with_memory()` 函数
-2. **必须正确处理** `[ACCEPTED]` 和 `[REJECTED]` 格式的用户输入
+2. **必须正确处理** `[ACCEPTED]` 和 `[REJECTED]` 格式的用户输入（**标准协议**）
 3. **必须在合适的字段中** 返回响应内容（`messages`、`final_report` 等）
+
+> 📋 **标准中断协议**: Su-Cli 使用统一的 `[ACCEPTED]` / `[REJECTED]` 格式作为 Agent 中断确认的标准协议。所有支持中断功能的 Agent 都应该遵循此协议，以确保与主程序的兼容性。
 
 ❌ **错误实现可能导致**：
 - `Cannot use Command(resume=...) without checkpointer` 错误

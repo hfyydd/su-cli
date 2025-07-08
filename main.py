@@ -224,33 +224,41 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                     # 切换到 agent 目录以确保相对导入正确
                     os.chdir(agent_path)
                     
-                    # 尝试导入 src.graph 模块的 build_graph_with_memory 函数
+                    # 尝试根据 langgraph.json 找到正确的模块
                     import importlib
+                    import json
                     
-                    # 清除可能的缓存模块
-                    modules_to_clear = ['src.graph', 'src.graph.builder', 'graph', 'graph.builder']
-                    for mod in modules_to_clear:
-                        if mod in sys.modules:
-                            del sys.modules[mod]
-                    
-                    # 重新导入（deer-flow使用src.graph结构）
-                    try:
-                        graph_module = importlib.import_module('src.graph')
-                        if hasattr(graph_module, 'build_graph_with_memory'):
-                            graph_with_memory = graph_module.build_graph_with_memory()
-                            console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
-                        else:
-                            # 尝试旧的导入方式作为后备
-                            graph_module = importlib.import_module('graph')
-                            if hasattr(graph_module, 'build_graph_with_memory'):
-                                graph_with_memory = graph_module.build_graph_with_memory()
-                                console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
-                    except ImportError:
-                        # 尝试旧的导入方式作为后备
-                        graph_module = importlib.import_module('graph')
-                        if hasattr(graph_module, 'build_graph_with_memory'):
-                            graph_with_memory = graph_module.build_graph_with_memory()
-                            console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
+                    # 读取 langgraph.json 配置
+                    langgraph_json_path = agent_path / "langgraph.json"
+                    if langgraph_json_path.exists():
+                        with open(langgraph_json_path, 'r', encoding='utf-8') as f:
+                            config = json.load(f)
+                        
+                        # 获取第一个graph的模块路径
+                        graphs = config.get('graphs', {})
+                        if graphs:
+                            # 取第一个graph配置
+                            first_graph_path = list(graphs.values())[0]
+                            # 解析路径格式：./src/agent/graph.py:graph -> src.agent.graph
+                            if ':' in first_graph_path:
+                                module_path = first_graph_path.split(':')[0]
+                                # 去掉 ./ 前缀，转换为Python模块路径
+                                module_path = module_path.lstrip('./').replace('/', '.').replace('.py', '')
+                                
+                                # 清除可能的缓存模块
+                                modules_to_clear = [module_path, f"{module_path}.builder"]
+                                for mod in modules_to_clear:
+                                    if mod in sys.modules:
+                                        del sys.modules[mod]
+                                
+                                # 尝试导入模块并查找 build_graph_with_memory 函数
+                                try:
+                                    graph_module = importlib.import_module(module_path)
+                                    if hasattr(graph_module, 'build_graph_with_memory'):
+                                        graph_with_memory = graph_module.build_graph_with_memory()
+                                        console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
+                                except ImportError:
+                                    pass
                 
                 except ImportError as e:
                     # 导入失败，说明不支持中断恢复功能，静默处理
@@ -343,13 +351,13 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                 show_choices=False
             ).strip().lower()
             
-            # 标准化用户输入并转换为 deer-flow 期望的格式
+            # 标准化用户输入并转换为标准的 [ACCEPTED]/[REJECTED] 格式
             if user_confirmation in ["yes", "y", "是", "确认"]:
                 user_choice = "yes"
-                user_confirmation = "[ACCEPTED] 用户确认继续执行计划"
+                user_confirmation = "[ACCEPTED]"
             else:
                 user_choice = "no"  
-                user_confirmation = "[REJECTED] 用户拒绝执行计划"
+                user_confirmation = "[REJECTED]"
                 
             console.print(f"[dim]您的选择: {user_choice}[/dim]")
             console.print(f"[dim]发送给 agent: {user_confirmation}[/dim]")

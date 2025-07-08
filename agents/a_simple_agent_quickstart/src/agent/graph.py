@@ -34,12 +34,19 @@ async def chatbot_node(state: State):
             "type": "confirmation"
         })
         
-        # 检查用户确认
-        if str(user_confirmation).lower() not in ['yes', 'y', '是', '确认']:
-            # 导入必要的消息类型
+        # 检查用户确认 - 使用标准的 [ACCEPTED]/[REJECTED] 格式
+        confirmation_str = str(user_confirmation)
+        if confirmation_str.startswith("[REJECTED]"):
+            # 用户拒绝，返回取消消息
             from langchain_core.messages import AIMessage
             return {
                 "messages": [AIMessage(content="好的，我已取消处理这个请求。")]
+            }
+        elif not confirmation_str.startswith("[ACCEPTED]"):
+            # 如果不是标准格式，也作为拒绝处理
+            from langchain_core.messages import AIMessage
+            return {
+                "messages": [AIMessage(content="输入格式不正确，已取消处理。")]
             }
         
         # 创建agent，添加系统提示
@@ -81,6 +88,15 @@ checkpointer = MemorySaver()
 
 # 编译图，添加checkpointer以支持中断功能
 graph = builder.compile(checkpointer=checkpointer)
+
+def build_graph():
+    """构建不带内存的图"""
+    return builder.compile()
+
+def build_graph_with_memory():
+    """构建带内存的图（支持中断恢复）"""
+    memory = MemorySaver()
+    return builder.compile(checkpointer=memory)
 
 
 
