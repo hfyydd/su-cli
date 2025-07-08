@@ -15,6 +15,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.layout import Layout
 from rich.box import ROUNDED
+from rich_gradient import Text as GradientText
 
 # 设置日志级别，减少不必要的信息输出
 logging.getLogger("core").setLevel(logging.WARNING)
@@ -201,6 +202,72 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     
     graph = module.graph
     
+    # 检查是否支持带 checkpointer 的 graph（用于中断恢复功能）
+    graph_with_memory = None
+    try:
+        # 尝试从 agent 的 graph 模块导入 build_graph_with_memory
+        agent_info = scanner.get_agent_info(current_agent)
+        if agent_info:
+            agent_path = scanner.project_root / agent_info["path"]
+            src_path = agent_path / "src"
+            if src_path.exists():
+                import sys
+                import os
+                original_path = sys.path.copy()
+                original_cwd = os.getcwd()
+                
+                # 添加 src 路径到 sys.path
+                if str(src_path) not in sys.path:
+                    sys.path.insert(0, str(src_path))
+                
+                try:
+                    # 切换到 agent 目录以确保相对导入正确
+                    os.chdir(agent_path)
+                    
+                    # 尝试导入 src.graph 模块的 build_graph_with_memory 函数
+                    import importlib
+                    
+                    # 清除可能的缓存模块
+                    modules_to_clear = ['src.graph', 'src.graph.builder', 'graph', 'graph.builder']
+                    for mod in modules_to_clear:
+                        if mod in sys.modules:
+                            del sys.modules[mod]
+                    
+                    # 重新导入（deer-flow使用src.graph结构）
+                    try:
+                        graph_module = importlib.import_module('src.graph')
+                        if hasattr(graph_module, 'build_graph_with_memory'):
+                            graph_with_memory = graph_module.build_graph_with_memory()
+                            console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
+                        else:
+                            # 尝试旧的导入方式作为后备
+                            graph_module = importlib.import_module('graph')
+                            if hasattr(graph_module, 'build_graph_with_memory'):
+                                graph_with_memory = graph_module.build_graph_with_memory()
+                                console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
+                    except ImportError:
+                        # 尝试旧的导入方式作为后备
+                        graph_module = importlib.import_module('graph')
+                        if hasattr(graph_module, 'build_graph_with_memory'):
+                            graph_with_memory = graph_module.build_graph_with_memory()
+                            console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
+                
+                except ImportError as e:
+                    # 导入失败，说明不支持中断恢复功能，静默处理
+                    pass
+                except Exception as e:
+                    # 其他错误，静默处理但记录日志
+                    import logging
+                    logging.debug(f"创建带内存的 graph 失败: {e}")
+                finally:
+                    # 恢复原始路径和工作目录
+                    sys.path = original_path
+                    os.chdir(original_cwd)
+    except Exception as e:
+        # 静默处理检查中断恢复功能的错误
+        import logging
+        logging.debug(f"检查中断恢复功能时出错: {e}")
+    
     # 构造输入状态
     state = create_message_state(user_input, conversation_history)
     
@@ -213,8 +280,11 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     
     with console.status(f"[cyan]{current_agent}[/cyan] 正在思考...", spinner="dots"):
         try:
+            # 选择合适的 graph：如果有支持 checkpointer 的版本，优先使用它
+            target_graph = graph_with_memory if graph_with_memory is not None else graph
+            
             # 使用stream方法调用 agent，支持中断
-            async for chunk in graph.astream(state, config=config):
+            async for chunk in target_graph.astream(state, config=config):
                 # 检查是否有中断
                 if '__interrupt__' in chunk:
                     current_interrupt = chunk['__interrupt__'][0]
@@ -242,9 +312,22 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
         
         # 显示中断信息
         console.print()
+        
+        # 处理不同类型的中断数据
+        if isinstance(interrupt_data, str):
+            # 如果是字符串，直接显示
+            panel_content = f"[yellow]📋 {interrupt_data}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+        elif isinstance(interrupt_data, dict):
+            # 如果是字典，提取 message 和 question
+            message = interrupt_data.get('message', '')
+            question = interrupt_data.get('question', '请确认')
+            panel_content = f"[yellow]📋 {message}[/yellow]\n\n[cyan]❓ {question}[/cyan]"
+        else:
+            # 其他类型，转换为字符串
+            panel_content = f"[yellow]📋 {str(interrupt_data)}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+        
         console.print(Panel(
-            f"[yellow]📋 {interrupt_data.get('message', '')}[/yellow]\n\n"
-            f"[cyan]❓ {interrupt_data.get('question', '请确认')}[/cyan]",
+            panel_content,
             title="🤔 需要您的确认",
             border_style="yellow",
             padding=(1, 2)
@@ -260,13 +343,16 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                 show_choices=False
             ).strip().lower()
             
-            # 标准化用户输入
+            # 标准化用户输入并转换为 deer-flow 期望的格式
             if user_confirmation in ["yes", "y", "是", "确认"]:
-                user_confirmation = "yes"
+                user_choice = "yes"
+                user_confirmation = "[ACCEPTED] 用户确认继续执行计划"
             else:
-                user_confirmation = "no"
+                user_choice = "no"  
+                user_confirmation = "[REJECTED] 用户拒绝执行计划"
                 
-            console.print(f"[dim]您的选择: {user_confirmation}[/dim]")
+            console.print(f"[dim]您的选择: {user_choice}[/dim]")
+            console.print(f"[dim]发送给 agent: {user_confirmation}[/dim]")
             console.print()
             
         except (KeyboardInterrupt, EOFError):
@@ -277,11 +363,17 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
         try:
             from langgraph.types import Command
             
-            # 使用新的 status 显示继续执行
+            # 检查是否有支持 checkpointer 的 graph
+            if graph_with_memory is None:
+                console.print("[yellow]⚠️ 该 agent 不支持中断恢复功能，无法继续执行[/yellow]")
+                console.print("[cyan]💡 提示: 可以重新开始对话[/cyan]")
+                return None
+            
+            # 使用支持 checkpointer 的 graph 来处理恢复
             with console.status(f"[cyan]{current_agent}[/cyan] 正在处理您的确认...", spinner="dots"):
                 # 重置响应，开始收集恢复后的内容
                 resume_response = ""
-                async for chunk in graph.astream(
+                async for chunk in graph_with_memory.astream(
                     Command(resume=user_confirmation), 
                     config=config
                 ):
@@ -293,12 +385,34 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                         # 跳过特殊键如 __interrupt__
                         if node_name.startswith('__'):
                             continue
-                        if isinstance(node_output, dict) and 'messages' in node_output:
-                            for message in node_output['messages']:
-                                if hasattr(message, 'content'):
-                                    resume_response += message.content
-                                elif isinstance(message, dict) and 'content' in message:
-                                    resume_response += message['content']
+                        
+                        # 处理不同类型的输出
+                        if isinstance(node_output, dict):
+                            # 检查是否有 messages 字段
+                            if 'messages' in node_output:
+                                for message in node_output['messages']:
+                                    if hasattr(message, 'content'):
+                                        resume_response += message.content
+                                    elif isinstance(message, dict) and 'content' in message:
+                                        resume_response += message['content']
+                            
+                            # 检查是否有 final_report 字段（deer-flow特有）
+                            elif 'final_report' in node_output:
+                                resume_response += node_output['final_report']
+                            
+                            # 检查其他可能的内容字段
+                            elif 'content' in node_output:
+                                resume_response += node_output['content']
+                            elif 'text' in node_output:
+                                resume_response += node_output['text']
+                        
+                        elif isinstance(node_output, str):
+                            # 直接是字符串
+                            resume_response += node_output
+                        
+                        elif hasattr(node_output, 'content'):
+                            # 有 content 属性
+                            resume_response += node_output.content
                 
                 # 将恢复后的响应设置为最终响应
                 full_response = resume_response
@@ -335,7 +449,7 @@ def create_welcome_screen():
     """创建 Su-Cli 欢迎界面"""
     console = Console()
     
-    # 创建渐变色的 ASCII 艺术字标题
+    # 创建带3D阴影效果的 ASCII 艺术字标题
     ascii_art = """
 ███████╗██╗   ██╗      ██████╗██╗     ██╗
 ██╔════╝██║   ██║     ██╔════╝██║     ██║
@@ -343,19 +457,37 @@ def create_welcome_screen():
 ╚════██║██║   ██║     ██║     ██║     ██║
 ███████║╚██████╔╝     ╚██████╗███████╗██║
 ╚══════╝ ╚═════╝       ╚═════╝╚══════╝╚═╝
+ ▓▓▓▓▓▓▓ ▓▓▓▓▓▓        ▓▓▓▓▓▓ ▓▓▓▓▓▓▓ ▓▓
+  ▒▒▒▒▒▒ ▒▒▒▒▒          ▒▒▒▒▒ ▒▒▒▒▒▒▒ ▒▒
+   ░░░░░ ░░░░░            ░░░░░ ░░░░░░ ░░
     """
     
-    # 创建渐变色标题
-    title = Text(ascii_art)
-    title.stylize("bold magenta", 0, len(ascii_art) // 3)
-    title.stylize("bold blue", len(ascii_art) // 3, len(ascii_art) * 2 // 3)
-    title.stylize("bold cyan", len(ascii_art) * 2 // 3, len(ascii_art))
+    # 使用 rich-gradient 创建美丽的渐变标题
+    title = GradientText(
+        ascii_art.strip(),
+        colors=[
+            "#667eea",  # 柔和蓝色
+            "#764ba2",  # 深紫色
+            "#f093fb",  # 粉紫色
+            "#f5576c",  # 柔和红色
+            "#4facfe",  # 天蓝色
+        ],
+        rainbow=False  # 使用自定义柔和颜色
+    )
     
-    # 创建欢迎信息
-    welcome_text = Text("\n🚀 欢迎使用 Su-Cli 命令行工具！", style="bold white")
-    subtitle = Text("一个强大而简洁的命令行助手", style="italic bright_blue")
+    # 创建柔和渐变欢迎信息
+    welcome_text = GradientText(
+        "\n🚀 欢迎使用 Su-Cli 命令行工具！",
+        colors=["#6a85b6", "#baa6dc", "#a8c8ec"]  # 柔和蓝紫色过渡
+    )
     
-    # 创建使用提示
+    # 创建柔和渐变副标题
+    subtitle = GradientText(
+        "一个强大而简洁的命令行助手",
+        colors=["#889abb", "#9baed6", "#adc3ee"]  # 更柔和的蓝色过渡
+    )
+    
+    # 创建使用提示 - 使用渐变效果
     tips = [
         "💡 输入命令来开始使用",
         "📝 编辑文件或运行指令", 
@@ -363,10 +495,19 @@ def create_welcome_screen():
         "🔧 自定义您的工作流程"
     ]
     
+    # 为每个提示创建柔和渐变文本
+    gradient_colors = [
+        ["#7eb3e3", "#a3c4e8"],  # 柔和天蓝色过渡
+        ["#c8a8e8", "#d1b3ec"],  # 柔和紫色过渡
+        ["#9bb5e3", "#b3c9e8"],  # 柔和蓝紫色过渡
+        ["#e8b3d1", "#ecbfd8"]   # 柔和粉紫色过渡
+    ]
+    
     tip_panels = []
     for i, tip in enumerate(tips):
-        color = ["green", "yellow", "blue", "magenta"][i]
-        tip_panels.append(Panel(tip, style=color, width=25))
+        gradient_tip = GradientText(tip, colors=gradient_colors[i])
+        border_color = ["green", "yellow", "blue", "magenta"][i]
+        tip_panels.append(Panel(gradient_tip, style=border_color, width=25))
     
     # 组合所有元素
     header = Align.center(title)
@@ -380,8 +521,12 @@ def create_welcome_screen():
     console.print(sub)
     console.print()
     
-    # 显示提示面板
-    console.print(Align.center(Text("✨ 快速开始指南 ✨", style="bold yellow")))
+    # 显示提示面板 - 使用柔和渐变效果
+    guide_title = GradientText(
+        "✨ 快速开始指南 ✨",
+        colors=["#a8c8ec", "#baa6dc", "#d1a3e8"]  # 柔和蓝紫色过渡
+    )
+    console.print(Align.center(guide_title))
     console.print()
     console.print(Columns(tip_panels, equal=True, expand=True))
     console.print()
