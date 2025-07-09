@@ -206,8 +206,11 @@ def initialize_agent_system() -> bool:
             console.print("❌ [red]没有发现可用的 agents[/red]")
             return False
         
-        # 默认选择第一个 agent
-        current_agent = available_agents[0]
+        # 默认选择 'default' agent，如果不存在则选择第一个 agent
+        if "default" in available_agents:
+            current_agent = "default"
+        else:
+            current_agent = available_agents[0]
         logger.info(f"Agent 系统初始化成功，当前使用: {current_agent}")
         console.print(f"✅ [green]Agent 系统已就绪，当前使用: {current_agent}[/green]")
         
