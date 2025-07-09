@@ -1,0 +1,12 @@
+2025-07-09 22:11:26,584 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:11:26,587 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:11:34,521 - __main__ - INFO - 开始加载 agent: deer-flow
+2025-07-09 22:11:35,532 - __main__ - INFO - 成功创建带内存的 graph: deer-flow
+2025-07-09 22:12:00,019 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:12:00,022 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:12:17,615 - __main__ - INFO - 开始加载 agent: a_simple_agent_quickstart
+2025-07-09 22:12:18,128 - __main__ - INFO - 成功创建带内存的 graph: a_simple_agent_quickstart
+2025-07-09 22:14:38,098 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:14:38,102 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:15:00,604 - __main__ - INFO - 开始加载 agent: a_simple_agent_quickstart
+2025-07-09 22:15:01,204 - __main__ - INFO - 成功创建带内存的 graph: a_simple_agent_quickstart

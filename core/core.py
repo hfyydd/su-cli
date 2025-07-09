@@ -412,7 +412,6 @@ class AgentScanner:
             module_path = agent_path / entry_point
             
             # 将 agent 目录添加到 sys.path，确保能正确导入 src.agent.xxx 模块
-            # 注意：不要添加 src 目录本身，因为我们需要 "from src.agent.xxx import" 这种导入方式工作
             agent_path_str = str(agent_path)
             
             paths_added = []
@@ -421,11 +420,24 @@ class AgentScanner:
                 sys.path.insert(0, agent_path_str)
                 paths_added.append(agent_path_str)
                 logger.debug(f"添加agent路径到 sys.path: {agent_path_str}")
-                
-            # 不添加 src 路径，让 "from src.agent.xxx import" 能够正确工作
             
-            # 生成模块名称，处理路径中的斜杠
+            # 生成唯一的模块名称，避免冲突
             module_name = f"agent_{agent_name}_{entry_point.replace('/', '_').replace('.py', '')}"
+            
+            # 如果模块已经在 sys.modules 中，先移除它以确保重新加载
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+            
+            # 同时清理可能存在的 src.agent 相关模块，避免缓存问题
+            modules_to_clean = []
+            for mod_name in list(sys.modules.keys()):
+                if mod_name.startswith('src.agent') or mod_name.startswith('agent.'):
+                    modules_to_clean.append(mod_name)
+            
+            for mod_name in modules_to_clean:
+                if mod_name in sys.modules:
+                    del sys.modules[mod_name]
+                    logger.debug(f"清理缓存模块: {mod_name}")
             
             spec = importlib.util.spec_from_file_location(module_name, module_path)
             
@@ -440,18 +452,19 @@ class AgentScanner:
             module = importlib.util.module_from_spec(spec)
             
             # 将模块添加到 sys.modules
-            if module_name not in sys.modules:
-                sys.modules[module_name] = module
+            sys.modules[module_name] = module
             
-            # 执行模块 - 在这里设置适当的环境变量和上下文
+            # 执行模块 - 在agent目录的上下文中执行
             old_cwd = os.getcwd()
             try:
-                # 切换到agent目录，确保相对路径正确
+                # 切换到agent目录，确保相对路径和导入能正确工作
                 os.chdir(agent_path)
+                logger.debug(f"切换工作目录到: {agent_path}")
                 spec.loader.exec_module(module)
             finally:
                 # 恢复原始工作目录
                 os.chdir(old_cwd)
+                logger.debug(f"恢复工作目录到: {old_cwd}")
             
             # 缓存模块
             agent_info["module"] = module

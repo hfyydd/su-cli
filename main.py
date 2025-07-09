@@ -1,9 +1,13 @@
 import sys
 import asyncio
 import logging
-from pathlib import Path
-from typing import List, Dict, Optional, Any
 import uuid
+import os
+import json
+import importlib
+from pathlib import Path
+from typing import List, Dict, Optional, Any, Tuple
+
 from rich.console import Console
 from rich.text import Text
 from rich.panel import Panel
@@ -17,91 +21,79 @@ from rich.layout import Layout
 from rich.box import ROUNDED
 from rich_gradient import Text as GradientText
 
-# 设置日志级别，减少不必要的信息输出
-logging.getLogger("core").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# 配置常量
+CONFIG = {
+    "LOGGING_LEVEL": logging.WARNING,
+    "PROMPT_STYLES": {
+        "modern": "现代简约风格 (带边框)",
+        "minimal": "极简风格",
+        "classic": "经典风格 (类似 bash)",
+        "colorful": "彩色风格 (带图标)"
+    },
+    "DEFAULT_PROMPT_STYLE": "modern",
+    "CONFIRMATION_CHOICES": ["yes", "y", "是", "确认", "no", "n", "否", "取消"],
+    "CONFIRMATION_YES": ["yes", "y", "是", "确认"],
+    "EXIT_COMMANDS": ['/exit', '/quit', '/q', 'exit', 'quit'],
+    "HELP_COMMANDS": ['/help', '/h', 'help'],
+    "CLEAR_COMMANDS": ['/clear', 'clear'],
+    "AGENTS_COMMANDS": ['/agents', 'agents'],
+    "HISTORY_COMMANDS": ['/history', 'history'],
+    "RESET_COMMANDS": ['/reset', 'reset'],
+    "STYLE_COMMANDS": ['/style', 'style'],
+}
+
+# 设置日志级别和格式
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('su-cli.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# 设置第三方库的日志级别
+logging.getLogger("core").setLevel(CONFIG["LOGGING_LEVEL"])
+logging.getLogger("httpx").setLevel(CONFIG["LOGGING_LEVEL"])
+logging.getLogger("langgraph").setLevel(CONFIG["LOGGING_LEVEL"])
 
 # 添加 core 模块到路径
 sys.path.insert(0, str(Path(__file__).parent / "core"))
-from core import scanner, scan_agents, get_available_agents
+
+try:
+    from core import scanner, scan_agents, get_available_agents, get_valid_agents
+except ImportError as e:
+    logger.error(f"导入 core 模块失败: {e}")
+    sys.exit(1)
 
 # 全局变量
 console = Console()
 conversation_history = []
 current_agent = None
 available_agents = []
-prompt_style = "modern"  # 当前提示符风格
-current_thread_id = str(uuid.uuid4())  # 当前对话的线程ID
+prompt_style = CONFIG["DEFAULT_PROMPT_STYLE"]
+current_thread_id = str(uuid.uuid4())
 
 
-def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> str:
+def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "modern") -> str:
     """
     创建美观的命令行提示符
-    支持多种风格: modern, minimal, classic, colorful
-    """
-    if agent_name:
-        agent_display = agent_name.replace("a_simple_agent_quickstart", "简单助手")
-        agent_display = agent_display.replace("_", " ").title()
-    else:
-        agent_display = "CLI"
     
+    Args:
+        agent_name: 当前使用的 agent 名称，可为 None
+        style: 提示符风格，支持 modern, minimal, classic, colorful
+    
+    Returns:
+        str: 用户输入的内容，或者退出命令
+    
+    Raises:
+        KeyboardInterrupt: 用户按下 Ctrl+C
+        EOFError: 用户按下 Ctrl+D
+    """
     try:
-        if style == "modern":
-            # 风格1: 现代简约风格
-            first_line = Text()
-            first_line.append("┌─ ", style="bright_cyan")
-            first_line.append("SuCli", style="bold bright_white")
-            if agent_name:
-                first_line.append(" @ ", style="dim")
-                first_line.append(agent_display, style="bright_magenta")
-            first_line.append(" ─┐", style="bright_cyan")
-            
-            second_line = Text()
-            second_line.append("└─ ", style="bright_cyan")
-            second_line.append("❯ ", style="bold bright_green")
-            
-            console.print(first_line)
-            user_input = Prompt.ask(second_line).strip()
-            
-        elif style == "minimal":
-            # 风格2: 极简风格
-            prompt_text = Text()
-            prompt_text.append("su", style="bold bright_blue")
-            if agent_name:
-                prompt_text.append(f":{agent_display.lower()}", style="bright_yellow")
-            prompt_text.append(" ❯ ", style="bold bright_green")
-            
-            user_input = Prompt.ask(prompt_text).strip()
-            
-        elif style == "classic":
-            # 风格3: 经典风格
-            prompt_text = Text()
-            prompt_text.append("[", style="bright_white")
-            prompt_text.append("SuCli", style="bold bright_cyan")
-            if agent_name:
-                prompt_text.append("@", style="dim")
-                prompt_text.append(agent_display, style="bright_magenta")
-            prompt_text.append("]", style="bright_white")
-            prompt_text.append("$ ", style="bold bright_green")
-            
-            user_input = Prompt.ask(prompt_text).strip()
-            
-        elif style == "colorful":
-            # 风格4: 彩色风格
-            prompt_text = Text()
-            prompt_text.append("🚀 ", style="")
-            prompt_text.append("Su", style="bold red")
-            prompt_text.append("Cli", style="bold blue")
-            if agent_name:
-                prompt_text.append(" 🤖 ", style="")
-                prompt_text.append(agent_display, style="bold bright_magenta")
-            prompt_text.append(" ➤ ", style="bold bright_yellow")
-            
-            user_input = Prompt.ask(prompt_text).strip()
-        
-        else:
-            # 默认简单风格
-            user_input = Prompt.ask("[bold green]SuCli >[/] ").strip()
+        agent_display = _format_agent_name(agent_name)
+        user_input = _get_styled_input(agent_display, style)
         
         # 显示用户输入（统一的回显样式）
         if user_input:
@@ -119,25 +111,111 @@ def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> st
         return "/exit"
 
 
-def initialize_agent_system():
+def _format_agent_name(agent_name: Optional[str]) -> str:
+    """格式化 agent 名称用于显示"""
+    if agent_name:
+        agent_display = agent_name.replace("a_simple_agent_quickstart", "简单助手")
+        agent_display = agent_display.replace("_", " ").title()
+        return agent_display
+    return "CLI"
+
+
+def _get_styled_input(agent_display: str, style: str) -> str:
+    """根据风格获取用户输入"""
+    if style == "modern":
+        return _get_modern_input(agent_display)
+    elif style == "minimal":
+        return _get_minimal_input(agent_display)
+    elif style == "classic":
+        return _get_classic_input(agent_display)
+    elif style == "colorful":
+        return _get_colorful_input(agent_display)
+    else:
+        return Prompt.ask("[bold green]SuCli >[/] ").strip()
+
+
+def _get_modern_input(agent_display: str) -> str:
+    """现代简约风格输入"""
+    first_line = Text()
+    first_line.append("┌─ ", style="bright_cyan")
+    first_line.append("SuCli", style="bold bright_white")
+    if agent_display != "CLI":
+        first_line.append(" @ ", style="dim")
+        first_line.append(agent_display, style="bright_magenta")
+    first_line.append(" ─┐", style="bright_cyan")
+    
+    second_line = Text()
+    second_line.append("└─ ", style="bright_cyan")
+    second_line.append("❯ ", style="bold bright_green")
+    
+    console.print(first_line)
+    return Prompt.ask(second_line).strip()
+
+
+def _get_minimal_input(agent_display: str) -> str:
+    """极简风格输入"""
+    prompt_text = Text()
+    prompt_text.append("su", style="bold bright_blue")
+    if agent_display != "CLI":
+        prompt_text.append(f":{agent_display.lower()}", style="bright_yellow")
+    prompt_text.append(" ❯ ", style="bold bright_green")
+    
+    return Prompt.ask(prompt_text).strip()
+
+
+def _get_classic_input(agent_display: str) -> str:
+    """经典风格输入"""
+    prompt_text = Text()
+    prompt_text.append("[", style="bright_white")
+    prompt_text.append("SuCli", style="bold bright_cyan")
+    if agent_display != "CLI":
+        prompt_text.append("@", style="dim")
+        prompt_text.append(agent_display, style="bright_magenta")
+    prompt_text.append("]", style="bright_white")
+    prompt_text.append("$ ", style="bold bright_green")
+    
+    return Prompt.ask(prompt_text).strip()
+
+
+def _get_colorful_input(agent_display: str) -> str:
+    """彩色风格输入"""
+    prompt_text = Text()
+    prompt_text.append("🚀 ", style="")
+    prompt_text.append("Su", style="bold red")
+    prompt_text.append("Cli", style="bold blue")
+    if agent_display != "CLI":
+        prompt_text.append(" 🤖 ", style="")
+        prompt_text.append(agent_display, style="bold bright_magenta")
+    prompt_text.append(" ➤ ", style="bold bright_yellow")
+    
+    return Prompt.ask(prompt_text).strip()
+
+
+def initialize_agent_system() -> bool:
     """初始化 agent 系统"""
     global available_agents, current_agent
     
     try:
+        logger.info("开始初始化 agent 系统")
         agents = scan_agents()
-        available_agents = get_available_agents()
+        # 只获取有效的 agents
+        valid_agents = get_valid_agents()
+        available_agents = list(valid_agents.keys())
         
         if not available_agents:
+            logger.warning("没有发现可用的 agents")
             console.print("❌ [red]没有发现可用的 agents[/red]")
             return False
         
         # 默认选择第一个 agent
         current_agent = available_agents[0]
+        logger.info(f"Agent 系统初始化成功，当前使用: {current_agent}")
         console.print(f"✅ [green]Agent 系统已就绪，当前使用: {current_agent}[/green]")
         
         return True
         
     except Exception as e:
+        logger.error(f"初始化 agent 系统失败: {e}", exc_info=True)
         console.print(f"❌ [red]初始化 agent 系统失败: {e}[/red]")
         return False
 
@@ -179,6 +257,288 @@ def create_message_state(user_input: str, message_history: List[Dict] = None) ->
         }
 
 
+def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
+    """
+    加载指定 agent 的 graph 对象
+    
+    Returns:
+        tuple: (graph, graph_with_memory) - 普通graph和带内存的graph
+    """
+    try:
+        logger.info(f"开始加载 agent: {agent_name}")
+        
+        # 加载 agent 模块
+        module = scanner.load_agent_module(agent_name)
+        if not module:
+            logger.error(f"无法加载 agent 模块: {agent_name}")
+            return None, None
+        
+        # 获取 graph 对象
+        if not hasattr(module, 'graph'):
+            logger.error(f"Agent {agent_name} 没有 graph 对象")
+            return None, None
+        
+        graph = module.graph
+        graph_with_memory = None
+        
+        # 尝试获取带内存的 graph
+        try:
+            agent_info = scanner.get_agent_info(agent_name)
+            if agent_info:
+                graph_with_memory = _build_graph_with_memory(agent_info)
+                if graph_with_memory:
+                    logger.info(f"成功创建带内存的 graph: {agent_name}")
+                else:
+                    logger.debug(f"无法创建带内存的 graph: {agent_name}")
+        except Exception as e:
+            logger.debug(f"创建带内存的 graph 失败: {e}")
+        
+        return graph, graph_with_memory
+        
+    except Exception as e:
+        logger.error(f"加载 agent graph 失败: {e}", exc_info=True)
+        return None, None
+
+
+def _build_graph_with_memory(agent_info: Dict) -> Optional[Any]:
+    """
+    构建带内存的 graph 对象
+    """
+    agent_path = scanner.project_root / agent_info["path"]
+    src_path = agent_path / "src"
+    
+    if not src_path.exists():
+        return None
+    
+    import sys
+    import os
+    import importlib
+    import json
+    
+    original_path = sys.path.copy()
+    original_cwd = os.getcwd()
+    
+    try:
+        # 添加 src 路径到 sys.path
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+        
+        # 切换到 agent 目录
+        os.chdir(agent_path)
+        
+        # 读取 langgraph.json 配置
+        langgraph_json_path = agent_path / "langgraph.json"
+        if not langgraph_json_path.exists():
+            return None
+        
+        with open(langgraph_json_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        # 获取第一个graph的模块路径
+        graphs = config.get('graphs', {})
+        if not graphs:
+            return None
+        
+        # 取第一个graph配置
+        first_graph_path = list(graphs.values())[0]
+        
+        # 解析路径格式：./src/agent/graph.py:graph -> src.agent.graph
+        if ':' not in first_graph_path:
+            return None
+        
+        module_path = first_graph_path.split(':')[0]
+        # 去掉 ./ 前缀，转换为Python模块路径
+        module_path = module_path.lstrip('./').replace('/', '.').replace('.py', '')
+        
+        # 清除可能的缓存模块
+        modules_to_clear = [module_path, f"{module_path}.builder"]
+        for mod in modules_to_clear:
+            if mod in sys.modules:
+                del sys.modules[mod]
+        
+        # 尝试导入模块并查找 build_graph_with_memory 函数
+        graph_module = importlib.import_module(module_path)
+        if hasattr(graph_module, 'build_graph_with_memory'):
+            return graph_module.build_graph_with_memory()
+        
+        return None
+        
+    except Exception:
+        return None
+    finally:
+        # 恢复原始路径和工作目录
+        sys.path = original_path
+        os.chdir(original_cwd)
+
+
+async def process_stream_chunks(graph, state, config):
+    """
+    处理流式响应的数据块
+    
+    Returns:
+        tuple: (full_response, current_interrupt)
+    """
+    full_response = ""
+    current_interrupt = None
+    
+    try:
+        async for chunk in graph.astream(state, config=config):
+            # 检查是否有中断
+            if '__interrupt__' in chunk:
+                current_interrupt = chunk['__interrupt__'][0]
+                break
+            
+            # 处理正常的消息块  
+            for node_name, node_output in chunk.items():
+                # 跳过特殊键如 __interrupt__
+                if node_name.startswith('__'):
+                    continue
+                if isinstance(node_output, dict) and 'messages' in node_output:
+                    for message in node_output['messages']:
+                        if hasattr(message, 'content'):
+                            full_response += message.content
+                        elif isinstance(message, dict) and 'content' in message:
+                            full_response += message['content']
+    except Exception as e:
+        logger.error(f"处理流式响应时发生错误: {e}", exc_info=True)
+        raise
+    
+    return full_response, current_interrupt
+
+
+def handle_user_interrupt(interrupt_data) -> Optional[str]:
+    """
+    处理用户中断确认
+    
+    Returns:
+        Optional[str]: 用户确认结果，None表示取消
+    """
+    # 显示中断信息
+    console.print()
+    
+    # 处理不同类型的中断数据
+    if isinstance(interrupt_data, str):
+        panel_content = f"[yellow]📋 {interrupt_data}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+    elif isinstance(interrupt_data, dict):
+        message = interrupt_data.get('message', '')
+        question = interrupt_data.get('question', '请确认')
+        panel_content = f"[yellow]📋 {message}[/yellow]\n\n[cyan]❓ {question}[/cyan]"
+    else:
+        panel_content = f"[yellow]📋 {str(interrupt_data)}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+    
+    console.print(Panel(
+        panel_content,
+        title="🤔 需要您的确认",
+        border_style="yellow",
+        padding=(1, 2)
+    ))
+    console.print()
+    
+    # 获取用户输入
+    try:
+        user_confirmation = Prompt.ask(
+            "[bold green]您确认要处理这个请求吗？ (yes/no)[/bold green]",
+            choices=CONFIG["CONFIRMATION_CHOICES"],
+            default="yes",
+            show_choices=False
+        ).strip().lower()
+        
+        # 标准化用户输入
+        if user_confirmation in CONFIG["CONFIRMATION_YES"]:
+            console.print(f"✨ 已确认，继续处理中...")
+            console.print()
+            return "[ACCEPTED]"
+        else:
+            return "[REJECTED]"
+            
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]操作已取消[/yellow]")
+        return None
+
+
+async def resume_after_interrupt(graph_with_memory, user_confirmation: str, config: Dict) -> str:
+    """
+    中断后恢复执行
+    
+    Returns:
+        str: 恢复后的完整响应
+    """
+    if graph_with_memory is None:
+        console.print("[yellow]⚠️ 该 agent 不支持中断恢复功能，无法继续执行[/yellow]")
+        console.print("[cyan]💡 提示: 可以重新开始对话[/cyan]")
+        return ""
+    
+    try:
+        from langgraph.types import Command
+        
+        resume_response = ""
+        async for chunk in graph_with_memory.astream(
+            Command(resume=user_confirmation), 
+            config=config
+        ):
+            # 处理恢复后的消息块
+            for node_name, node_output in chunk.items():
+                # 跳过特殊键如 __interrupt__
+                if node_name.startswith('__'):
+                    continue
+                
+                # 处理不同类型的输出
+                if isinstance(node_output, dict):
+                    # 检查是否有 messages 字段
+                    if 'messages' in node_output:
+                        for message in node_output['messages']:
+                            if hasattr(message, 'content'):
+                                resume_response += message.content
+                            elif isinstance(message, dict) and 'content' in message:
+                                resume_response += message['content']
+                    
+                    # 检查是否有 final_report 字段（deer-flow特有）
+                    elif 'final_report' in node_output:
+                        resume_response += node_output['final_report']
+                    
+                    # 检查其他可能的内容字段
+                    elif 'content' in node_output:
+                        resume_response += node_output['content']
+                    elif 'text' in node_output:
+                        resume_response += node_output['text']
+                
+                elif isinstance(node_output, str):
+                    resume_response += node_output
+                
+                elif hasattr(node_output, 'content'):
+                    resume_response += node_output.content
+        
+        return resume_response
+        
+    except ImportError:
+        console.print("❌ [red]无法导入Command，请检查langgraph版本[/red]")
+        return ""
+    except Exception as resume_error:
+        console.print(f"❌ [red]操作失败，请重试[/red]")
+        return ""
+
+
+def display_agent_response(response: str, agent_name: str):
+    """
+    显示agent响应
+    """
+    if not response:
+        return
+    
+    # 创建更简洁的对话显示
+    agent_display = agent_name.replace("a_simple_agent_quickstart", "助手")
+    agent_display = agent_display.replace("_", " ").title()
+    
+    response_text = Text()
+    response_text.append("🤖 ", style="bright_cyan")
+    response_text.append(f"{agent_display}: ", style="bold bright_cyan")
+    response_text.append(response, style="white")
+    
+    console.print()
+    console.print(response_text)
+    console.print()
+
+
 async def stream_agent_response(user_input: str) -> Optional[str]:
     """
     流式调用 agent 并处理响应，支持中断功能
@@ -189,97 +549,18 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
         console.print("❌ [red]没有可用的 agent[/red]")
         return None
     
-    # 加载 agent 模块
-    module = scanner.load_agent_module(current_agent)
-    if not module:
+    # 加载 agent 的 graph 对象
+    graph, graph_with_memory = load_agent_graph(current_agent)
+    if not graph:
         console.print(f"❌ [red]无法加载 agent: {current_agent}[/red]")
         return None
     
-    # 获取 graph 对象
-    if not hasattr(module, 'graph'):
-        console.print(f"❌ [red]Agent {current_agent} 没有 graph 对象[/red]")
-        return None
-    
-    graph = module.graph
-    
-    # 检查是否支持带 checkpointer 的 graph（用于中断恢复功能）
-    graph_with_memory = None
-    try:
-        # 尝试从 agent 的 graph 模块导入 build_graph_with_memory
-        agent_info = scanner.get_agent_info(current_agent)
-        if agent_info:
-            agent_path = scanner.project_root / agent_info["path"]
-            src_path = agent_path / "src"
-            if src_path.exists():
-                import sys
-                import os
-                original_path = sys.path.copy()
-                original_cwd = os.getcwd()
-                
-                # 添加 src 路径到 sys.path
-                if str(src_path) not in sys.path:
-                    sys.path.insert(0, str(src_path))
-                
-                try:
-                    # 切换到 agent 目录以确保相对导入正确
-                    os.chdir(agent_path)
-                    
-                    # 尝试根据 langgraph.json 找到正确的模块
-                    import importlib
-                    import json
-                    
-                    # 读取 langgraph.json 配置
-                    langgraph_json_path = agent_path / "langgraph.json"
-                    if langgraph_json_path.exists():
-                        with open(langgraph_json_path, 'r', encoding='utf-8') as f:
-                            config = json.load(f)
-                        
-                        # 获取第一个graph的模块路径
-                        graphs = config.get('graphs', {})
-                        if graphs:
-                            # 取第一个graph配置
-                            first_graph_path = list(graphs.values())[0]
-                            # 解析路径格式：./src/agent/graph.py:graph -> src.agent.graph
-                            if ':' in first_graph_path:
-                                module_path = first_graph_path.split(':')[0]
-                                # 去掉 ./ 前缀，转换为Python模块路径
-                                module_path = module_path.lstrip('./').replace('/', '.').replace('.py', '')
-                                
-                                # 清除可能的缓存模块
-                                modules_to_clear = [module_path, f"{module_path}.builder"]
-                                for mod in modules_to_clear:
-                                    if mod in sys.modules:
-                                        del sys.modules[mod]
-                                
-                                # 尝试导入模块并查找 build_graph_with_memory 函数
-                                try:
-                                    graph_module = importlib.import_module(module_path)
-                                    if hasattr(graph_module, 'build_graph_with_memory'):
-                                        graph_with_memory = graph_module.build_graph_with_memory()
-                                except ImportError:
-                                    pass
-                
-                except ImportError as e:
-                    # 导入失败，说明不支持中断恢复功能，静默处理
-                    pass
-                except Exception as e:
-                    # 其他错误，静默处理但记录日志
-                    import logging
-                    logging.debug(f"创建带内存的 graph 失败: {e}")
-                finally:
-                    # 恢复原始路径和工作目录
-                    sys.path = original_path
-                    os.chdir(original_cwd)
-    except Exception as e:
-        # 静默处理检查中断恢复功能的错误
-        import logging
-        logging.debug(f"检查中断恢复功能时出错: {e}")
-    
-    # 构造输入状态
+    # 构造输入状态和配置
     state = create_message_state(user_input, conversation_history)
-    
-    # 配置线程ID
     config = {"configurable": {"thread_id": current_thread_id}}
+    
+    # 选择合适的 graph：如果有支持 checkpointer 的版本，优先使用它
+    target_graph = graph_with_memory if graph_with_memory is not None else graph
     
     # 用于存储完整响应
     full_response = ""
@@ -287,163 +568,34 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     
     with console.status(f"[cyan]{current_agent}[/cyan] 正在思考...", spinner="dots"):
         try:
-            # 选择合适的 graph：如果有支持 checkpointer 的版本，优先使用它
-            target_graph = graph_with_memory if graph_with_memory is not None else graph
-            
-            # 使用stream方法调用 agent，支持中断
-            async for chunk in target_graph.astream(state, config=config):
-                # 检查是否有中断
-                if '__interrupt__' in chunk:
-                    current_interrupt = chunk['__interrupt__'][0]
-                    break
-                
-                # 处理正常的消息块  
-                for node_name, node_output in chunk.items():
-                    # 跳过特殊键如 __interrupt__
-                    if node_name.startswith('__'):
-                        continue
-                    if isinstance(node_output, dict) and 'messages' in node_output:
-                        for message in node_output['messages']:
-                            if hasattr(message, 'content'):
-                                full_response += message.content
-                            elif isinstance(message, dict) and 'content' in message:
-                                full_response += message['content']
-                            
+            # 处理流式响应
+            full_response, current_interrupt = await process_stream_chunks(
+                target_graph, state, config
+            )
         except Exception as invoke_error:
+            logger.error(f"调用 agent 失败: {invoke_error}", exc_info=True)
             console.print(f"❌ [red]调用 agent 失败: {invoke_error}[/red]")
             return None
     
-    # 如果有中断，在 status 上下文外处理用户确认
+    # 处理中断情况
     if current_interrupt:
         interrupt_data = current_interrupt.value
+        user_confirmation = handle_user_interrupt(interrupt_data)
         
-        # 显示中断信息
-        console.print()
-        
-        # 处理不同类型的中断数据
-        if isinstance(interrupt_data, str):
-            # 如果是字符串，直接显示
-            panel_content = f"[yellow]📋 {interrupt_data}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
-        elif isinstance(interrupt_data, dict):
-            # 如果是字典，提取 message 和 question
-            message = interrupt_data.get('message', '')
-            question = interrupt_data.get('question', '请确认')
-            panel_content = f"[yellow]📋 {message}[/yellow]\n\n[cyan]❓ {question}[/cyan]"
-        else:
-            # 其他类型，转换为字符串
-            panel_content = f"[yellow]📋 {str(interrupt_data)}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
-        
-        console.print(Panel(
-            panel_content,
-            title="🤔 需要您的确认",
-            border_style="yellow",
-            padding=(1, 2)
-        ))
-        console.print()
-        
-        # 获取用户输入 - 现在在 status 上下文外
-        try:
-            user_confirmation = Prompt.ask(
-                "[bold green]您确认要处理这个请求吗？ (yes/no)[/bold green]",
-                choices=["yes", "y", "是", "确认", "no", "n", "否", "取消"],
-                default="yes",
-                show_choices=False
-            ).strip().lower()
-            
-            # 标准化用户输入并转换为标准的 [ACCEPTED]/[REJECTED] 格式
-            if user_confirmation in ["yes", "y", "是", "确认"]:
-                user_choice = "yes"
-                user_confirmation = "[ACCEPTED]"
-            else:
-                user_choice = "no"  
-                user_confirmation = "[REJECTED]"
-                
-            console.print(f"✨ 已确认，继续处理中...")
-            console.print()
-            
-        except (KeyboardInterrupt, EOFError):
-            console.print("\n[yellow]操作已取消[/yellow]")
+        if user_confirmation is None:
             return None
         
-        # 导入Command并继续执行
-        try:
-            from langgraph.types import Command
-            
-            # 检查是否有支持 checkpointer 的 graph
-            if graph_with_memory is None:
-                console.print("[yellow]⚠️ 该 agent 不支持中断恢复功能，无法继续执行[/yellow]")
-                console.print("[cyan]💡 提示: 可以重新开始对话[/cyan]")
-                return None
-            
-            # 使用支持 checkpointer 的 graph 来处理恢复
-            with console.status(f"[cyan]{current_agent}[/cyan] 正在处理您的确认...", spinner="dots"):
-                # 重置响应，开始收集恢复后的内容
-                resume_response = ""
-                async for chunk in graph_with_memory.astream(
-                    Command(resume=user_confirmation), 
-                    config=config
-                ):
-                    # 调试输出
-                    # console.print(f"[dim]收到 chunk: {chunk}[/dim]")
-                    
-                    # 处理恢复后的消息块
-                    for node_name, node_output in chunk.items():
-                        # 跳过特殊键如 __interrupt__
-                        if node_name.startswith('__'):
-                            continue
-                        
-                        # 处理不同类型的输出
-                        if isinstance(node_output, dict):
-                            # 检查是否有 messages 字段
-                            if 'messages' in node_output:
-                                for message in node_output['messages']:
-                                    if hasattr(message, 'content'):
-                                        resume_response += message.content
-                                    elif isinstance(message, dict) and 'content' in message:
-                                        resume_response += message['content']
-                            
-                            # 检查是否有 final_report 字段（deer-flow特有）
-                            elif 'final_report' in node_output:
-                                resume_response += node_output['final_report']
-                            
-                            # 检查其他可能的内容字段
-                            elif 'content' in node_output:
-                                resume_response += node_output['content']
-                            elif 'text' in node_output:
-                                resume_response += node_output['text']
-                        
-                        elif isinstance(node_output, str):
-                            # 直接是字符串
-                            resume_response += node_output
-                        
-                        elif hasattr(node_output, 'content'):
-                            # 有 content 属性
-                            resume_response += node_output.content
-                
-                # 将恢复后的响应设置为最终响应
+        # 恢复执行
+        with console.status(f"[cyan]{current_agent}[/cyan] 正在处理您的确认...", spinner="dots"):
+            resume_response = await resume_after_interrupt(
+                graph_with_memory, user_confirmation, config
+            )
+            if resume_response:
                 full_response = resume_response
-            
-        except ImportError:
-            console.print("❌ [red]无法导入Command，请检查langgraph版本[/red]")
-            return None
-        except Exception as resume_error:
-            console.print(f"❌ [red]操作失败，请重试[/red]")
-            return None
     
-    # 显示完整响应 - 简洁的对话样式
+    # 显示响应并更新历史
     if full_response:
-        # 创建更简洁的对话显示
-        agent_display = current_agent.replace("a_simple_agent_quickstart", "助手")
-        agent_display = agent_display.replace("_", " ").title()
-        
-        response_text = Text()
-        response_text.append("🤖 ", style="bright_cyan")
-        response_text.append(f"{agent_display}: ", style="bold bright_cyan")
-        response_text.append(full_response, style="white")
-        
-        console.print()
-        console.print(response_text)
-        console.print()
+        display_agent_response(full_response, current_agent)
         
         # 添加到对话历史
         conversation_history.append({"role": "user", "content": user_input})
@@ -560,100 +712,26 @@ async def handle_command(command: str) -> bool:
     if not command.strip():
         return True
         
-    if command.lower() in ['/exit', '/quit', '/q', 'exit', 'quit']:
+    if command.lower() in CONFIG["EXIT_COMMANDS"]:
         console.print("👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
         return False
-    elif command.lower() in ['/help', '/h', 'help']:
-        console.print(Panel.fit(
-            "[bold cyan]Su-Cli 帮助信息[/bold cyan]\n\n"
-            "📋 [yellow]可用命令：[/yellow]\n"
-            "  • [green]/help[/green] | [green]/h[/green] - 显示此帮助信息\n"
-            "  • [green]/exit[/green] | [green]/q[/green] - 退出程序\n"
-            "  • [green]/clear[/green] - 清屏\n"
-            "  • [green]/agents[/green] - 显示可用的 agents\n"
-            "  • [green]/use <name>[/green] - 切换到指定的 agent\n"
-            "  • [green]/history[/green] - 显示对话历史\n"
-            "  • [green]/reset[/green] - 清空对话历史并重置对话线程\n\n"
-            "🤔 [yellow]中断功能：[/yellow]\n"
-            "  • Agent 会在需要时请求您的确认\n"
-            "  • 输入 'yes'、'y'、'是'、'确认' 来同意\n"
-            "  • 输入其他内容来取消操作\n\n"
-            "💡 [yellow]提示：[/yellow] 直接输入消息与当前 agent 对话",
-            title="🔧 帮助",
-            border_style="cyan"
-        ))
-    elif command.lower() in ['/clear', 'clear']:
+    elif command.lower() in CONFIG["HELP_COMMANDS"]:
+        _show_help()
+    elif command.lower() in CONFIG["CLEAR_COMMANDS"]:
         console.clear()
         create_welcome_screen()
-    elif command.lower() in ['/agents', 'agents']:
-        if available_agents:
-            agent_list = "\n".join([f"  • {'🤖 ' if agent == current_agent else '  '}{agent}" for agent in available_agents])
-            console.print(Panel.fit(
-                f"[bold cyan]可用的 Agents[/bold cyan]\n\n{agent_list}\n\n"
-                f"[yellow]当前 agent:[/yellow] [green]{current_agent}[/green]",
-                title="🤖 Agents",
-                border_style="cyan"
-            ))
-        else:
-            console.print("❌ [red]没有可用的 agents[/red]")
+    elif command.lower() in CONFIG["AGENTS_COMMANDS"]:
+        _show_agents()
     elif command.lower().startswith('/use '):
-        agent_name = command[5:].strip()
-        if agent_name in available_agents:
-            current_agent = agent_name
-            console.print(f"✅ [green]已切换到 agent: {current_agent}[/green]")
-        else:
-            console.print(f"❌ [red]Agent '{agent_name}' 不存在[/red]")
-            console.print(f"💡 [yellow]可用的 agents: {', '.join(available_agents)}[/yellow]")
-    elif command.lower() in ['/history', 'history']:
-        if conversation_history:
-            history_text = ""
-            for i, msg in enumerate(conversation_history):
-                role_emoji = "👤" if msg["role"] == "user" else "🤖"
-                role_color = "blue" if msg["role"] == "user" else "green"
-                history_text += f"{role_emoji} [{role_color}]{msg['role'].upper()}[/{role_color}]: {msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}\n\n"
-            
-            console.print(Panel.fit(
-                history_text.strip(),
-                title=f"📝 对话历史 ({len(conversation_history)//2} 轮对话)",
-                border_style="yellow"
-            ))
-        else:
-            console.print("📝 [yellow]暂无对话历史[/yellow]")
-    elif command.lower() in ['/reset', 'reset']:
-        conversation_history.clear()
-        global current_thread_id
-        current_thread_id = str(uuid.uuid4())  # 重置线程ID
-        console.print("🔄 [green]对话历史已清空，已开始新的对话线程[/green]")
-    elif command.lower() in ['/style', 'style']:
-        # 显示当前风格和可用风格
-        styles = {
-            "modern": "现代简约风格 (带边框)",
-            "minimal": "极简风格",
-            "classic": "经典风格 (类似 bash)",
-            "colorful": "彩色风格 (带图标)"
-        }
-        
-        style_text = f"[yellow]当前风格:[/yellow] [green]{prompt_style}[/green] - {styles.get(prompt_style, '未知')}\n\n"
-        style_text += "[yellow]可用风格:[/yellow]\n"
-        for style_name, description in styles.items():
-            indicator = "🎯 " if style_name == prompt_style else "   "
-            style_text += f"{indicator}[cyan]{style_name}[/cyan] - {description}\n"
-        
-        console.print(Panel.fit(
-            style_text.strip(),
-            title="🎨 界面风格",
-            border_style="magenta"
-        ))
+        _switch_agent(command[5:].strip())
+    elif command.lower() in CONFIG["HISTORY_COMMANDS"]:
+        _show_history()
+    elif command.lower() in CONFIG["RESET_COMMANDS"]:
+        _reset_conversation()
+    elif command.lower() in CONFIG["STYLE_COMMANDS"]:
+        _show_styles()
     elif command.lower().startswith('/style '):
-        style_name = command[7:].strip().lower()
-        valid_styles = ["modern", "minimal", "classic", "colorful"]
-        
-        if style_name in valid_styles:
-            prompt_style = style_name
-            console.print(f"✅ [green]已切换到 {style_name} 风格[/green]")
-        else:
-            console.print(f"❌ [red]风格 '{style_name}' 不存在[/red]")
-            console.print(f"💡 [yellow]可用风格: {', '.join(valid_styles)}[/yellow]")
+        _switch_style(command[7:].strip().lower())
     else:
         # 处理普通对话
         if not current_agent:
@@ -664,6 +742,113 @@ async def handle_command(command: str) -> bool:
         await stream_agent_response(command)
     
     return True
+
+
+def _show_help():
+    """显示帮助信息"""
+    console.print(Panel.fit(
+        "[bold cyan]Su-Cli 帮助信息[/bold cyan]\n\n"
+        "📋 [yellow]可用命令：[/yellow]\n"
+        "  • [green]/help[/green] | [green]/h[/green] - 显示此帮助信息\n"
+        "  • [green]/exit[/green] | [green]/q[/green] - 退出程序\n"
+        "  • [green]/clear[/green] - 清屏\n"
+        "  • [green]/agents[/green] - 显示可用的 agents\n"
+        "  • [green]/use <name>[/green] - 切换到指定的 agent\n"
+        "  • [green]/history[/green] - 显示对话历史\n"
+        "  • [green]/reset[/green] - 清空对话历史并重置对话线程\n\n"
+        "🤔 [yellow]中断功能：[/yellow]\n"
+        "  • Agent 会在需要时请求您的确认\n"
+        "  • 输入 'yes'、'y'、'是'、'确认' 来同意\n"
+        "  • 输入其他内容来取消操作\n\n"
+        "💡 [yellow]提示：[/yellow] 直接输入消息与当前 agent 对话",
+        title="🔧 帮助",
+        border_style="cyan"
+    ))
+
+
+def _show_agents():
+    """显示可用的 agents"""
+    if available_agents:
+        agent_list = "\n".join([
+            f"  • {'🤖 ' if agent == current_agent else '  '}{agent}" 
+            for agent in available_agents
+        ])
+        console.print(Panel.fit(
+            f"[bold cyan]可用的 Agents[/bold cyan]\n\n{agent_list}\n\n"
+            f"[yellow]当前 agent:[/yellow] [green]{current_agent}[/green]",
+            title="🤖 Agents",
+            border_style="cyan"
+        ))
+    else:
+        console.print("❌ [red]没有可用的 agents[/red]")
+
+
+def _switch_agent(agent_name: str):
+    """切换到指定的 agent"""
+    global current_agent
+    
+    if agent_name in available_agents:
+        current_agent = agent_name
+        console.print(f"✅ [green]已切换到 agent: {current_agent}[/green]")
+    else:
+        console.print(f"❌ [red]Agent '{agent_name}' 不存在[/red]")
+        console.print(f"💡 [yellow]可用的 agents: {', '.join(available_agents)}[/yellow]")
+
+
+def _show_history():
+    """显示对话历史"""
+    if conversation_history:
+        history_text = ""
+        for msg in conversation_history:
+            role_emoji = "👤" if msg["role"] == "user" else "🤖"
+            role_color = "blue" if msg["role"] == "user" else "green"
+            content = msg['content'][:100] + ('...' if len(msg['content']) > 100 else '')
+            history_text += f"{role_emoji} [{role_color}]{msg['role'].upper()}[/{role_color}]: {content}\n\n"
+        
+        console.print(Panel.fit(
+            history_text.strip(),
+            title=f"📝 对话历史 ({len(conversation_history)//2} 轮对话)",
+            border_style="yellow"
+        ))
+    else:
+        console.print("📝 [yellow]暂无对话历史[/yellow]")
+
+
+def _reset_conversation():
+    """重置对话历史和线程ID"""
+    global conversation_history, current_thread_id
+    
+    conversation_history.clear()
+    current_thread_id = str(uuid.uuid4())
+    console.print("🔄 [green]对话历史已清空，已开始新的对话线程[/green]")
+
+
+def _show_styles():
+    """显示可用的风格"""
+    style_text = f"[yellow]当前风格:[/yellow] [green]{prompt_style}[/green] - {CONFIG['PROMPT_STYLES'].get(prompt_style, '未知')}\n\n"
+    style_text += "[yellow]可用风格:[/yellow]\n"
+    
+    for style_name, description in CONFIG['PROMPT_STYLES'].items():
+        indicator = "🎯 " if style_name == prompt_style else "   "
+        style_text += f"{indicator}[cyan]{style_name}[/cyan] - {description}\n"
+    
+    console.print(Panel.fit(
+        style_text.strip(),
+        title="🎨 界面风格",
+        border_style="magenta"
+    ))
+
+
+def _switch_style(style_name: str):
+    """切换界面风格"""
+    global prompt_style
+    
+    if style_name in CONFIG['PROMPT_STYLES']:
+        prompt_style = style_name
+        console.print(f"✅ [green]已切换到 {style_name} 风格[/green]")
+    else:
+        console.print(f"❌ [red]风格 '{style_name}' 不存在[/red]")
+        console.print(f"💡 [yellow]可用风格: {', '.join(CONFIG['PROMPT_STYLES'].keys())}[/yellow]")
 
 async def main():
     """主函数"""
