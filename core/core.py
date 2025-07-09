@@ -411,21 +411,18 @@ class AgentScanner:
             # 动态加载模块
             module_path = agent_path / entry_point
             
-            # 将 agent 目录及其src目录添加到 sys.path，确保能正确导入相对模块
+            # 将 agent 目录添加到 sys.path，确保能正确导入 src.agent.xxx 模块
+            # 注意：不要添加 src 目录本身，因为我们需要 "from src.agent.xxx import" 这种导入方式工作
             agent_path_str = str(agent_path)
-            src_path_str = str(agent_path / "src") if (agent_path / "src").exists() else None
             
             paths_added = []
             
             if agent_path_str not in sys.path:
                 sys.path.insert(0, agent_path_str)
                 paths_added.append(agent_path_str)
-                logger.debug(f"添加路径到 sys.path: {agent_path_str}")
-            
-            if src_path_str and src_path_str not in sys.path:
-                sys.path.insert(0, src_path_str)
-                paths_added.append(src_path_str)
-                logger.debug(f"添加src路径到 sys.path: {src_path_str}")
+                logger.debug(f"添加agent路径到 sys.path: {agent_path_str}")
+                
+            # 不添加 src 路径，让 "from src.agent.xxx import" 能够正确工作
             
             # 生成模块名称，处理路径中的斜杠
             module_name = f"agent_{agent_name}_{entry_point.replace('/', '_').replace('.py', '')}"

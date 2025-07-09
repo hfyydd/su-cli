@@ -61,7 +61,7 @@ def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> st
             second_line.append("❯ ", style="bold bright_green")
             
             console.print(first_line)
-            user_input = Prompt.ask(second_line, default="").strip()
+            user_input = Prompt.ask(second_line).strip()
             
         elif style == "minimal":
             # 风格2: 极简风格
@@ -71,7 +71,7 @@ def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> st
                 prompt_text.append(f":{agent_display.lower()}", style="bright_yellow")
             prompt_text.append(" ❯ ", style="bold bright_green")
             
-            user_input = Prompt.ask(prompt_text, default="").strip()
+            user_input = Prompt.ask(prompt_text).strip()
             
         elif style == "classic":
             # 风格3: 经典风格
@@ -84,7 +84,7 @@ def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> st
             prompt_text.append("]", style="bright_white")
             prompt_text.append("$ ", style="bold bright_green")
             
-            user_input = Prompt.ask(prompt_text, default="").strip()
+            user_input = Prompt.ask(prompt_text).strip()
             
         elif style == "colorful":
             # 风格4: 彩色风格
@@ -97,11 +97,11 @@ def create_beautiful_prompt(agent_name: str = None, style: str = "modern") -> st
                 prompt_text.append(agent_display, style="bold bright_magenta")
             prompt_text.append(" ➤ ", style="bold bright_yellow")
             
-            user_input = Prompt.ask(prompt_text, default="").strip()
+            user_input = Prompt.ask(prompt_text).strip()
         
         else:
             # 默认简单风格
-            user_input = Prompt.ask("[bold green]SuCli >[/] ", default="").strip()
+            user_input = Prompt.ask("[bold green]SuCli >[/] ").strip()
         
         # 显示用户输入（统一的回显样式）
         if user_input:
@@ -256,7 +256,6 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                                     graph_module = importlib.import_module(module_path)
                                     if hasattr(graph_module, 'build_graph_with_memory'):
                                         graph_with_memory = graph_module.build_graph_with_memory()
-                                        console.print(f"[dim]✓ 成功启用中断恢复功能[/dim]")
                                 except ImportError:
                                     pass
                 
@@ -359,8 +358,7 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                 user_choice = "no"  
                 user_confirmation = "[REJECTED]"
                 
-            console.print(f"[dim]您的选择: {user_choice}[/dim]")
-            console.print(f"[dim]发送给 agent: {user_confirmation}[/dim]")
+            console.print(f"✨ 已确认，继续处理中...")
             console.print()
             
         except (KeyboardInterrupt, EOFError):
@@ -424,28 +422,28 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
                 
                 # 将恢复后的响应设置为最终响应
                 full_response = resume_response
-                
-                # 调试输出
-                if not full_response.strip():
-                    console.print("[yellow]⚠️ 警告: Agent 没有返回内容[/yellow]")
             
         except ImportError:
             console.print("❌ [red]无法导入Command，请检查langgraph版本[/red]")
             return None
         except Exception as resume_error:
-            console.print(f"❌ [red]恢复执行失败: {resume_error}[/red]")
-            import traceback
-            console.print(f"[dim]错误详情: {traceback.format_exc()}[/dim]")
+            console.print(f"❌ [red]操作失败，请重试[/red]")
             return None
     
-    # 显示完整响应
+    # 显示完整响应 - 简洁的对话样式
     if full_response:
-        console.print(Panel(
-            Markdown(full_response),
-            title=f"🤖 {current_agent}",
-            border_style="cyan",
-            padding=(1, 2)
-        ))
+        # 创建更简洁的对话显示
+        agent_display = current_agent.replace("a_simple_agent_quickstart", "助手")
+        agent_display = agent_display.replace("_", " ").title()
+        
+        response_text = Text()
+        response_text.append("🤖 ", style="bright_cyan")
+        response_text.append(f"{agent_display}: ", style="bold bright_cyan")
+        response_text.append(full_response, style="white")
+        
+        console.print()
+        console.print(response_text)
+        console.print()
         
         # 添加到对话历史
         conversation_history.append({"role": "user", "content": user_input})
@@ -497,10 +495,10 @@ def create_welcome_screen():
     
     # 创建使用提示 - 使用渐变效果
     tips = [
-        "💡 输入命令来开始使用",
-        "📝 编辑文件或运行指令", 
-        "❓具体描述获得最佳结果",
-        "🔧 自定义您的工作流程"
+        "🤖 与Agent 对话交流",
+        "🔗 支持 MCP 协议集成", 
+        "⚡ 基于 LangGraph ",
+        "🔄 支持中断恢复功能"
     ]
     
     # 为每个提示创建柔和渐变文本
