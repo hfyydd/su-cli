@@ -12,3 +12,51 @@
 2025-07-09 22:15:01,204 - __main__ - INFO - 成功创建带内存的 graph: a_simple_agent_quickstart
 2025-07-09 22:15:46,604 - __main__ - INFO - 开始加载 agent: a_simple_agent_quickstart
 2025-07-09 22:15:46,612 - __main__ - INFO - 成功创建带内存的 graph: a_simple_agent_quickstart
+2025-07-09 22:20:36,345 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:20:36,348 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:20:55,429 - __main__ - INFO - 开始加载 agent: a_simple_agent_quickstart
+2025-07-09 22:20:56,084 - __main__ - INFO - 成功创建带内存的 graph: a_simple_agent_quickstart
+2025-07-09 22:24:41,625 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:24:41,627 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:28:18,769 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:28:18,771 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:43:45,970 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 22:43:45,974 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 22:44:07,390 - src.agent.mcp_utils - INFO - 已加载 MCP 配置文件: mcp_config.json
+2025-07-09 22:44:07,569 - src.agent.tools - ERROR - 工具初始化失败: Cannot run the event loop while another loop is running
+2025-07-09 22:44:07,574 - src.agent.tools - ERROR - 工具初始化失败: Cannot run the event loop while another loop is running
+2025-07-09 22:44:07,575 - src.agent.tools - ERROR - 工具初始化失败: Cannot run the event loop while another loop is running
+2025-07-09 22:44:07,575 - src.agent.tools - ERROR - 工具初始化失败: Cannot run the event loop while another loop is running
+2025-07-09 22:44:07,578 - src.agent.mcp_utils - INFO - 正在加载 MCP 服务器: filesystem
+2025-07-09 22:44:07,580 - src.agent.tools - INFO - 总共提供 1 个工具 (本地: 1, MCP: 0)
+2025-07-09 22:44:08,199 - src.agent.mcp_utils - INFO - 从服务器 (npx) 成功加载 12 个工具
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: read_file (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: read_multiple_files (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: write_file (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: edit_file (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: create_directory (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: list_directory (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: list_directory_with_sizes (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: directory_tree (来自 filesystem)
+2025-07-09 22:44:08,203 - src.agent.mcp_utils - INFO - 已加载工具: move_file (来自 filesystem)
+2025-07-09 22:44:08,204 - src.agent.mcp_utils - INFO - 已加载工具: search_files (来自 filesystem)
+2025-07-09 22:44:08,204 - src.agent.mcp_utils - INFO - 已加载工具: get_file_info (来自 filesystem)
+2025-07-09 22:44:08,204 - src.agent.mcp_utils - INFO - 已加载工具: list_allowed_directories (来自 filesystem)
+2025-07-09 22:44:08,204 - src.agent.mcp_utils - INFO - 正在加载 MCP 服务器: brave-search
+2025-07-09 22:44:10,534 - src.agent.mcp_utils - INFO - 从服务器 (npx) 成功加载 2 个工具
+2025-07-09 22:44:10,538 - src.agent.mcp_utils - INFO - 已加载工具: brave_web_search (来自 brave-search)
+2025-07-09 22:44:10,538 - src.agent.mcp_utils - INFO - 已加载工具: brave_local_search (来自 brave-search)
+2025-07-09 22:44:10,538 - src.agent.mcp_utils - INFO - 总共加载了 14 个 MCP 工具
+2025-07-09 22:44:10,538 - src.agent.tools - INFO - 成功加载 14 个 MCP 工具
+2025-07-09 23:07:31,870 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 23:07:31,873 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 23:07:42,837 - src.agent.mcp_utils - INFO - 已加载 MCP 配置文件: mcp_config.json
+2025-07-09 23:07:43,003 - src.agent.mcp_utils - WARNING - MCP 配置文件不存在: mcp_config.json
+2025-07-09 23:08:05,916 - src.agent.mcp_utils - INFO - 已加载 MCP 配置文件: mcp_config.json
+2025-07-09 23:08:05,937 - src.agent.mcp_utils - WARNING - MCP 配置文件不存在: mcp_config.json
+2025-07-09 23:12:09,893 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 23:12:09,896 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow
+2025-07-09 23:12:24,196 - src.agent.mcp_utils - INFO - 已加载 MCP 配置文件: mcp_config.json
+2025-07-09 23:12:24,344 - src.agent.mcp_utils - INFO - 已加载 MCP 配置文件: agents/default/mcp_config.json
+2025-07-09 23:15:10,223 - __main__ - INFO - 开始初始化 agent 系统
+2025-07-09 23:15:10,225 - __main__ - INFO - Agent 系统初始化成功，当前使用: deer-flow

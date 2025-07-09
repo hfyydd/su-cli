@@ -12,5 +12,10 @@ wheels/
 # Environment variables
 .env
 
+# MCP configuration with sensitive information
+mcp_config.production.json
+mcp_config.local.json
+*.mcp.json
+
 # LangGraph runtime data
 .langgraph_api/

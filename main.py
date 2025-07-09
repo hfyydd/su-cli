@@ -114,8 +114,7 @@ def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "mode
 def _format_agent_name(agent_name: Optional[str]) -> str:
     """格式化 agent 名称用于显示"""
     if agent_name:
-        agent_display = agent_name.replace("a_simple_agent_quickstart", "简单助手")
-        agent_display = agent_display.replace("_", " ").title()
+        agent_display = agent_name.replace("_", " ").title()
         return agent_display
     return "CLI"
 
@@ -265,7 +264,7 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
         tuple: (graph, graph_with_memory) - 普通graph和带内存的graph
     """
     try:
-        logger.info(f"开始加载 agent: {agent_name}")
+        logger.debug(f"开始加载 agent: {agent_name}")
         
         # 加载 agent 模块
         module = scanner.load_agent_module(agent_name)
@@ -287,7 +286,7 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
             if agent_info:
                 graph_with_memory = _build_graph_with_memory(agent_info)
                 if graph_with_memory:
-                    logger.info(f"成功创建带内存的 graph: {agent_name}")
+                    logger.debug(f"成功创建带内存的 graph: {agent_name}")
                 else:
                     logger.debug(f"无法创建带内存的 graph: {agent_name}")
         except Exception as e:

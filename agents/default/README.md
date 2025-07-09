@@ -7,6 +7,7 @@ A simple LangGraph agent quickstart template that demonstrates the basic structu
 - 🚀 **Quick Start**: Get started with LangGraph in minutes
 - 🔧 **Modular Design**: Clean separation of concerns with dedicated modules for graph, state, tools, and prompts
 - 🛠️ **Tool Integration**: Built-in example tools (current time getter)
+- 🔗 **MCP Support**: Full integration with Model Context Protocol for external tool access
 - 🎯 **React Agent**: Uses LangGraph's prebuilt React agent pattern
 - 📦 **Modern Package Management**: Uses `uv` for fast and reliable dependency management
 - 🔑 **Flexible API Support**: Compatible with OpenAI API and DeepSeek API
@@ -20,8 +21,12 @@ src/
 │   ├── graph.py        # Main LangGraph graph definition
 │   ├── state.py        # Agent state management
 │   ├── tools.py        # Custom tools and functions
+│   ├── mcp_utils.py    # MCP tool management utilities
 │   ├── prompts.py      # System prompts and templates
 │   └── utils.py        # Utility functions for agent creation
+├── mcp_config.json     # MCP servers configuration
+├── test_mcp.py         # MCP integration test script
+├── README_MCP.md       # Detailed MCP setup guide
 ├── langgraph.json      # LangGraph configuration
 └── pyproject.toml      # Project dependencies and metadata
 ```
@@ -88,6 +93,17 @@ result = await graph.ainvoke({
 print(result["messages"][-1]["content"])
 ```
 
+### Testing MCP Integration
+
+Test your MCP tool integration:
+
+```bash
+# Run MCP integration test
+uv run python test_mcp.py
+```
+
+This will verify that MCP tools are properly loaded and accessible to your agent.
+
 ## Core Components
 
 ### 1. State Management (`state.py`)
@@ -117,6 +133,8 @@ Utility functions for agent creation and configuration.
 
 ### Adding New Tools
 
+#### Local Tools
+
 1. Define your tool in `src/agent/tools.py`:
 ```python
 @tool
@@ -126,12 +144,37 @@ def my_custom_tool(input: str) -> str:
     return result
 ```
 
-2. Import and add it to the tools list in `graph.py`:
+2. Add it to the local tools list in `tools.py`:
 ```python
-from src.agent.tools import get_current_time, my_custom_tool
-
-agent = create_agent("chatbot", llm, [get_current_time, my_custom_tool], system_prompt)
+def get_all_tools() -> List[Tool]:
+    local_tools = [get_current_time, my_custom_tool]  # Add your tool here
+    # ... rest of the function
 ```
+
+#### MCP Tools
+
+Add external tools via MCP by editing `mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {}
+    },
+    "web-search": {
+      "command": "npx", 
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+See [README_MCP.md](README_MCP.md) for detailed MCP configuration guide.
 
 ### Modifying Prompts
 
