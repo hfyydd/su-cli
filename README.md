@@ -41,17 +41,21 @@ uv run main.py
 
 ## 📝 使用说明
 
-启动 Su-Cli 后，您将看到美观的欢迎界面。在命令提示符处，您可以：
+启动 Su-Cli 后，您将看到美观的欢迎界面：
+
+![Su-Cli 界面展示](image.png)
+
+在命令提示符处，您可以：
 
 ### 内置命令
 
-- `/help` - 显示帮助信息
+- `/help` | `/h` - 显示帮助信息
 - `/agents` - 显示可用的 Agent
-- `/agent <name>` - 切换到指定的 Agent
+- `/use <name>` - 切换到指定的 Agent
 - `/history` - 显示对话历史
 - `/reset` - 清空对话历史并重置线程
 - `/clear` - 清屏并重新显示欢迎界面
-- `/exit` - 退出程序
+- `/exit` | `/q` - 退出程序
 
 ### Agent 系统
 
@@ -72,11 +76,11 @@ Su-Cli 支持多个智能 Agent，每个 Agent 都有专门的功能：
 
 ```bash
 Su-Cli > /agents                    # 查看可用 Agent
-Su-Cli > /agent deer-flow          # 切换到 deer-flow
+Su-Cli > /use deer-flow             # 切换到 deer-flow
 Su-Cli > 研究量子计算的发展趋势        # 开始对话
 # Agent 可能会显示计划并请求确认...
 Su-Cli > /history                   # 查看对话历史
-Su-Cli > /exit                      # 退出程序
+Su-Cli > /q                         # 退出程序
 ```
 
 ## 🛠️ 开发

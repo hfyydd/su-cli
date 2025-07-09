@@ -539,7 +539,7 @@ def create_welcome_screen():
     
     # 底部信息
     footer = Panel(
-        Align.center(Text("输入 '/help' 获取更多帮助信息 | 输入 '/exit' 退出程序", style="dim white")),
+        Align.center(Text("输入 '/help' 或 '/h' 获取更多帮助信息 | 输入 '/exit' 或 '/q' 退出程序", style="dim white")),
         style="dim blue",
         border_style="dim"
     )
@@ -560,18 +560,18 @@ async def handle_command(command: str) -> bool:
     if not command.strip():
         return True
         
-    if command.lower() in ['/exit', '/quit', 'exit', 'quit']:
+    if command.lower() in ['/exit', '/quit', '/q', 'exit', 'quit']:
         console.print("👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
         return False
-    elif command.lower() in ['/help', 'help']:
+    elif command.lower() in ['/help', '/h', 'help']:
         console.print(Panel.fit(
             "[bold cyan]Su-Cli 帮助信息[/bold cyan]\n\n"
             "📋 [yellow]可用命令：[/yellow]\n"
-            "  • [green]/help[/green] - 显示此帮助信息\n"
-            "  • [green]/exit[/green] - 退出程序\n"
+            "  • [green]/help[/green] | [green]/h[/green] - 显示此帮助信息\n"
+            "  • [green]/exit[/green] | [green]/q[/green] - 退出程序\n"
             "  • [green]/clear[/green] - 清屏\n"
             "  • [green]/agents[/green] - 显示可用的 agents\n"
-            "  • [green]/agent <name>[/green] - 切换到指定的 agent\n"
+            "  • [green]/use <name>[/green] - 切换到指定的 agent\n"
             "  • [green]/history[/green] - 显示对话历史\n"
             "  • [green]/reset[/green] - 清空对话历史并重置对话线程\n\n"
             "🤔 [yellow]中断功能：[/yellow]\n"
@@ -596,8 +596,8 @@ async def handle_command(command: str) -> bool:
             ))
         else:
             console.print("❌ [red]没有可用的 agents[/red]")
-    elif command.lower().startswith('/agent '):
-        agent_name = command[7:].strip()
+    elif command.lower().startswith('/use '):
+        agent_name = command[5:].strip()
         if agent_name in available_agents:
             current_agent = agent_name
             console.print(f"✅ [green]已切换到 agent: {current_agent}[/green]")
@@ -684,7 +684,7 @@ async def main():
             user_input = create_beautiful_prompt(current_agent, prompt_style)
             
             # 处理退出命令
-            if user_input == "/exit":
+            if user_input in ["/exit", "/q"]:
                 console.print("👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
                 break
             
