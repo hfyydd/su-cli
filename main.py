@@ -5,6 +5,7 @@ import uuid
 import os
 import json
 import importlib
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple
 
@@ -53,6 +54,12 @@ I18N = {
   • [green]/style <name>[/green] - Switch to specified style
   • [green]/lang[/green] - Show current language settings
   • [green]/set_lang <lang>[/green] - Set language (en/zh)
+  • [green]show <n>[/green] - View detailed results of the nth tool call
+
+🔧 [yellow]Tool Results Viewer:[/yellow]
+  • Tool call results are automatically collapsed when displayed
+  • Use 'show 1', 'show 2' etc. to view detailed results
+  • Reduces interface clutter, view details on demand
 
 🤔 [yellow]Interrupt Feature:[/yellow]
   • Agent will request your confirmation when needed
@@ -160,6 +167,12 @@ I18N = {
   • [green]/style <name>[/green] - 切换到指定风格
   • [green]/lang[/green] - 显示当前语言设置
   • [green]/set_lang <lang>[/green] - 设置语言 (en/zh)
+  • [green]show <n>[/green] - 查看第n个工具调用的详细结果
+
+🔧 [yellow]工具结果查看器：[/yellow]
+  • 工具调用结果会自动折叠显示
+  • 使用 'show 1', 'show 2' 等命令查看详细结果
+  • 减少界面干扰，按需查看详细信息
 
 🤔 [yellow]中断功能：[/yellow]
   • Agent 会在需要时请求您的确认
@@ -261,6 +274,7 @@ CONFIG = {
     "RESET_COMMANDS": ['/reset', 'reset'],
     "STYLE_COMMANDS": ['/style', 'style'],
     "LANG_COMMANDS": ['/lang', 'lang'],
+    "SHOW_COMMANDS": ['show'],
 }
 
 # 设置日志级别和格式
@@ -296,6 +310,7 @@ available_agents = []
 prompt_style = CONFIG["DEFAULT_PROMPT_STYLE"]
 current_language = CONFIG["DEFAULT_LANGUAGE"]
 current_thread_id = str(uuid.uuid4())
+recent_tool_messages = []  # 存储最近的工具调用消息
 
 
 def t(key: str, *args, **kwargs) -> str:
@@ -702,13 +717,14 @@ def _build_graph_with_memory(agent_info: Dict) -> Optional[Any]:
 
 async def process_stream_chunks(graph, state, config):
     """
-    处理流式响应的数据块
+    处理流式响应的数据块，区分不同role的消息
     
     Returns:
-        tuple: (full_response, current_interrupt)
+        tuple: (full_response, current_interrupt, tool_messages)
     """
     full_response = ""
     current_interrupt = None
+    tool_messages = []
     
     try:
         async for chunk in graph.astream(state, config=config):
@@ -724,15 +740,49 @@ async def process_stream_chunks(graph, state, config):
                     continue
                 if isinstance(node_output, dict) and 'messages' in node_output:
                     for message in node_output['messages']:
-                        if hasattr(message, 'content'):
-                            full_response += message.content
-                        elif isinstance(message, dict) and 'content' in message:
-                            full_response += message['content']
+                        # 获取消息的role
+                        message_role = None
+                        message_content = None
+                        
+                        if hasattr(message, 'type'):
+                            # LangChain消息对象
+                            message_role = message.type
+                            message_content = getattr(message, 'content', '')
+                        elif hasattr(message, '__class__'):
+                            # 根据类名判断role
+                            class_name = message.__class__.__name__.lower()
+                            if 'human' in class_name or 'user' in class_name:
+                                message_role = 'user'
+                            elif 'ai' in class_name or 'assistant' in class_name:
+                                message_role = 'assistant'
+                            elif 'tool' in class_name:
+                                message_role = 'tool'
+                            elif 'function' in class_name:
+                                message_role = 'function'
+                            else:
+                                message_role = 'unknown'
+                            message_content = getattr(message, 'content', '')
+                        elif isinstance(message, dict):
+                            # 字典格式消息
+                            message_role = message.get('role', 'unknown')
+                            message_content = message.get('content', '')
+                        
+                        if message_content:
+                            # 只有 user 和 assistant 的消息加入主响应
+                            if message_role in ['user', 'assistant', 'ai', 'human']:
+                                full_response += message_content
+                            # tool 和 function 消息单独收集
+                            elif message_role in ['tool', 'function']:
+                                tool_messages.append({
+                                    'role': message_role,
+                                    'content': message_content,
+                                    'node': node_name
+                                })
     except Exception as e:
         logger.error(f"处理流式响应时发生错误: {e}", exc_info=True)
         raise
     
-    return full_response, current_interrupt
+    return full_response, current_interrupt, tool_messages
 
 
 def handle_user_interrupt(interrupt_data) -> Optional[str]:
@@ -868,25 +918,192 @@ async def resume_after_interrupt(graph_with_memory, user_confirmation: str, conf
         return ""
 
 
+def detect_markdown(text: str) -> bool:
+    """
+    检测文本是否包含markdown格式
+    
+    Args:
+        text: 要检测的文本
+        
+    Returns:
+        bool: 是否包含markdown格式
+    """
+    # 常见的markdown模式
+    markdown_patterns = [
+        r'#{1,6}\s+.+',           # 标题 (# ## ### 等)
+        r'\*\*.*?\*\*',           # 粗体 **text**
+        r'\*.*?\*',               # 斜体 *text*
+        r'`.*?`',                 # 行内代码 `code`
+        r'```[\s\S]*?```',        # 代码块 ```code```
+        r'^\s*[-\*\+]\s+',        # 无序列表 - * +
+        r'^\s*\d+\.\s+',          # 有序列表 1. 2. 3.
+        r'^\s*>\s+',              # 引用 >
+        r'\[.*?\]\(.*?\)',        # 链接 [text](url)
+        r'!\[.*?\]\(.*?\)',       # 图片 ![alt](url)
+        r'\|.*?\|',               # 表格 |col1|col2|
+        r'^-{3,}$',               # 分隔线 ---
+        r'={3,}$',                # 分隔线 ===
+    ]
+    
+    # 检查是否匹配任何markdown模式
+    for pattern in markdown_patterns:
+        if re.search(pattern, text, re.MULTILINE):
+            return True
+    
+    return False
+
+
 def display_agent_response(response: str, agent_name: str):
     """
-    显示agent响应
+    显示agent响应，支持markdown格式识别和渲染
     """
     if not response:
         return
     
-    # 创建更简洁的对话显示
+    # 创建agent显示名称
     agent_display = agent_name.replace("a_simple_agent_quickstart", t("assistant_label"))
     agent_display = agent_display.replace("_", " ").title()
     
-    response_text = Text()
-    response_text.append("🤖 ", style="bright_cyan")
-    response_text.append(f"{agent_display}: ", style="bold bright_cyan")
-    response_text.append(response, style="white")
+    console.print()
+    
+    # 显示agent标识
+    agent_header = Text()
+    agent_header.append("🤖 ", style="bright_cyan")
+    agent_header.append(f"{agent_display}", style="bold bright_cyan")
+    console.print(agent_header)
+    
+    # 检测是否为markdown格式
+    if detect_markdown(response):
+        # 渲染markdown内容
+        try:
+            # 创建markdown对象，设置代码主题
+            markdown_content = Markdown(response, code_theme="monokai")
+            
+            # 在面板中显示markdown内容
+            markdown_panel = Panel(
+                markdown_content,
+                border_style="dim cyan",
+                padding=(1, 2),
+                title="📝 Response",
+                title_align="left"
+            )
+            console.print(markdown_panel)
+        except Exception as e:
+            # 如果markdown渲染失败，回退到普通文本
+            console.print(f"[dim yellow]Warning: Markdown rendering failed, displaying as plain text[/dim yellow]")
+            _display_plain_text(response)
+    else:
+        # 显示普通文本
+        _display_plain_text(response)
     
     console.print()
-    console.print(response_text)
+
+
+def display_tool_messages_summary(tool_messages: List[Dict[str, Any]]):
+    """
+    显示工具消息的摘要信息
+    
+    Args:
+        tool_messages: 工具消息列表
+    """
+    if not tool_messages:
+        return
+    
     console.print()
+    
+    # 按node分组工具消息
+    tool_groups = {}
+    for i, msg in enumerate(tool_messages):
+        node = msg.get('node', 'unknown')
+        if node not in tool_groups:
+            tool_groups[node] = []
+        tool_groups[node].append((i + 1, msg))
+    
+    # 显示摘要
+    total_count = len(tool_messages)
+    if total_count == 1:
+        msg = tool_messages[0]
+        content_preview = msg['content'][:50] + "..." if len(msg['content']) > 50 else msg['content']
+        console.print(f"🔧 检测到 1 个工具调用结果")
+        console.print(f"  📦 {msg.get('node', 'unknown')} ({len(msg['content'])} 字符) - 输入 'show 1' 查看详细结果")
+    else:
+        console.print(f"🔧 检测到 {total_count} 个工具调用结果")
+        for node, messages in tool_groups.items():
+            for idx, (msg_num, msg) in enumerate(messages):
+                console.print(f"  📦 {node} ({len(msg['content'])} 字符) - 输入 'show {msg_num}' 查看详细结果")
+    
+    console.print()
+
+
+def show_tool_message(index: int):
+    """
+    显示指定索引的工具消息详细内容
+    
+    Args:
+        index: 消息索引（从1开始）
+    """
+    global recent_tool_messages
+    
+    if not recent_tool_messages:
+        console.print("❌ [red]没有可查看的工具调用结果[/red]")
+        return
+    
+    if index < 1 or index > len(recent_tool_messages):
+        console.print(f"❌ [red]无效的索引：{index}。请输入 1-{len(recent_tool_messages)} 之间的数字[/red]")
+        return
+    
+    msg = recent_tool_messages[index - 1]
+    
+    console.print()
+    console.print(f"🔧 [bold cyan]工具调用结果 #{index}[/bold cyan]")
+    console.print(f"📦 [yellow]节点：[/yellow] {msg.get('node', 'unknown')}")
+    console.print(f"🏷️  [yellow]类型：[/yellow] {msg.get('role', 'unknown')}")
+    console.print()
+    
+    content = msg['content']
+    
+    # 尝试格式化JSON内容
+    try:
+        import json
+        if content.strip().startswith('{') or content.strip().startswith('['):
+            parsed = json.loads(content)
+            formatted_content = json.dumps(parsed, indent=2, ensure_ascii=False)
+            content = formatted_content
+    except:
+        pass
+    
+    # 显示内容
+    content_panel = Panel(
+        Text(content, style="white"),
+        border_style="dim green",
+        padding=(1, 2),
+        title=f"📄 内容 ({len(content)} 字符)",
+        title_align="left"
+    )
+    console.print(content_panel)
+    console.print()
+
+
+def _display_plain_text(text: str):
+    """
+    显示普通文本响应
+    
+    Args:
+        text: 要显示的文本
+    """
+    # 为长文本添加面板包装
+    if len(text) > 200 or '\n' in text:
+        text_panel = Panel(
+            Text(text, style="white"),
+            border_style="dim blue",
+            padding=(1, 2),
+            title="💬 Response",
+            title_align="left"
+        )
+        console.print(text_panel)
+    else:
+        # 短文本直接显示
+        console.print(f"  {text}", style="white")
 
 
 async def stream_agent_response(user_input: str) -> Optional[str]:
@@ -919,7 +1136,7 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     with console.status(f"[cyan]{current_agent}[/cyan] {t('agent_thinking', current_agent)}", spinner="dots"):
         try:
             # 处理流式响应
-            full_response, current_interrupt = await process_stream_chunks(
+            full_response, current_interrupt, tool_messages = await process_stream_chunks(
                 target_graph, state, config
             )
         except Exception as invoke_error:
@@ -946,6 +1163,12 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     # 显示响应并更新历史
     if full_response:
         display_agent_response(full_response, current_agent)
+        
+        # 处理工具消息
+        global recent_tool_messages
+        recent_tool_messages = tool_messages
+        if tool_messages:
+            display_tool_messages_summary(tool_messages)
         
         # 添加到对话历史
         conversation_history.append({"role": "user", "content": user_input})
@@ -1087,6 +1310,13 @@ async def handle_command(command: str) -> bool:
         _set_language(command[10:].strip().lower())
     elif command.lower() in CONFIG["LANG_COMMANDS"]:
         _show_language()
+    elif command.lower().startswith('show '):
+        # 处理show命令
+        try:
+            index = int(command[5:].strip())
+            show_tool_message(index)
+        except ValueError:
+            console.print("❌ [red]请输入有效的数字，例如：show 1[/red]")
     else:
         # 处理普通对话
         if not current_agent:

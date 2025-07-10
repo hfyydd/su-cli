@@ -250,3 +250,209 @@ Traceback (most recent call last):
   File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
     raise self._exception.with_traceback(self._exception_tb)
 KeyboardInterrupt
+2025-07-10 13:47:14,611 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-135' coro=<Application.run_async() done, defined at /Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py:620> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 377, in create_beautiful_prompt
+    agent_display = _format_agent_name(agent_name)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 406, in _get_styled_input
+    if style == "modern":
+               ^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 463, in _get_modern_input
+    nest_asyncio.apply()
+           ~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1425, in prompt
+    return session.prompt(
+           ~~~~~~~~~~~~~~^
+        message,
+        ^^^^^^^^
+    ...<42 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1035, in prompt
+    return self.app.run(
+           ~~~~~~~~~~~~^
+        set_exception_handler=set_exception_handler,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 1002, in run
+    return asyncio.run(coro)
+           ~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 92, in run_until_complete
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 133, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 386, in __wakeup
+    self.__step()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 293, in __step
+    self.__step_run_and_handle_result(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 886, in run_async
+    return await _run_async(f)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 746, in _run_async
+    result = await f
+             ^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+KeyboardInterrupt
+2025-07-10 13:47:35,604 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<Application.run_async() done, defined at /Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py:620> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 378, in create_beautiful_prompt
+    user_input = _get_styled_input(agent_display, style)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 407, in _get_styled_input
+    return _get_modern_input(agent_display)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 464, in _get_modern_input
+    return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1425, in prompt
+    return session.prompt(
+           ~~~~~~~~~~~~~~^
+        message,
+        ^^^^^^^^
+    ...<42 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1035, in prompt
+    return self.app.run(
+           ~~~~~~~~~~~~^
+        set_exception_handler=set_exception_handler,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 1002, in run
+    return asyncio.run(coro)
+           ~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 92, in run_until_complete
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 133, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 386, in __wakeup
+    self.__step()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 293, in __step
+    self.__step_run_and_handle_result(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 886, in run_async
+    return await _run_async(f)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 746, in _run_async
+    result = await f
+             ^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+KeyboardInterrupt
+2025-07-10 14:32:28,208 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-196' coro=<Application.run_async() done, defined at /Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py:620> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 392, in create_beautiful_prompt
+    user_input = _get_styled_input(agent_display, style)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 421, in _get_styled_input
+    return _get_modern_input(agent_display)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 478, in _get_modern_input
+    return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1425, in prompt
+    return session.prompt(
+           ~~~~~~~~~~~~~~^
+        message,
+        ^^^^^^^^
+    ...<42 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1035, in prompt
+    return self.app.run(
+           ~~~~~~~~~~~~^
+        set_exception_handler=set_exception_handler,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 1002, in run
+    return asyncio.run(coro)
+           ~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 92, in run_until_complete
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 133, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 386, in __wakeup
+    self.__step()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 293, in __step
+    self.__step_run_and_handle_result(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 886, in run_async
+    return await _run_async(f)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 746, in _run_async
+    result = await f
+             ^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+KeyboardInterrupt
