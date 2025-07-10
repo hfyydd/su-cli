@@ -68,3 +68,185 @@
 2025-07-10 08:30:29,353 - __main__ - INFO - Agent system is ready, currently using: default
 2025-07-10 08:37:40,431 - __main__ - INFO - Starting to initialize agent system
 2025-07-10 08:37:40,434 - __main__ - INFO - Agent system is ready, currently using: default
+2025-07-10 08:58:21,633 - src.graph.nodes - INFO - Coordinator talking.
+2025-07-10 08:58:25,942 - src.graph.nodes - INFO - Planner generating full plan
+2025-07-10 08:58:38,739 - src.graph.nodes - INFO - Planner response: {
+    "locale": "zh-CN",
+    "has_enough_context": false,
+    "thought": "用户想要了解如何使用rich这个库，需要收集关于rich库的安装、基本用法、高级功能以及示例代码等全面信息。",
+    "title": "研究rich库的使用方法",
+    "steps": [
+        {
+            "need_web_search": true,
+            "title": "收集rich库的基本信息和安装指南",
+            "description": "查找rich库的官方文档或GitHub页面，收集关于库的简介、安装命令（如pip安装）、系统要求等基本信息。",
+            "step_type": "research"
+        },
+        {
+            "need_web_search": true,
+            "title": "研究rich库的基本用法和核心功能",
+            "description": "收集rich库的基本用法，包括如何初始化、常用的打印功能、颜色和样式的应用方法等核心功能的具体示例代码。",
+            "step_type": "research"
+        },
+        {
+            "need_web_search": true,
+            "title": "探索rich库的高级功能和实际应用案例",
+            "description": "查找rich库的高级功能，如表格、进度条、日志记录等的使用方法，以及在实际项目中的应用案例和最佳实践。",
+            "step_type": "research"
+        }
+    ]
+}
+2025-07-10 08:58:49,766 - src.graph.nodes - INFO - Plan is accepted by user.
+2025-07-10 08:58:49,767 - src.graph.nodes - INFO - Research team is collaborating on tasks.
+2025-07-10 08:58:49,768 - src.graph.nodes - INFO - Researcher node is researching.
+2025-07-10 08:58:49,768 - src.graph.nodes - INFO - Executing step: 收集rich库的基本信息和安装指南
+2025-07-10 08:59:12,387 - src.tools.decorators - INFO - Tool crawl_tool called with parameters: url=https://github.com/Textualize/rich
+2025-07-10 08:59:12,387 - src.crawler.jina_client - WARNING - Jina API key is not set. Provide your own key to access a higher rate limit. See https://jina.ai/reader for more information.
+2025-07-10 08:59:14,984 - src.tools.decorators - INFO - Tool crawl_tool returned: {'url': 'https://github.com/Textualize/rich', 'crawled_content': '# GitHub - Textualize/rich: Rich is a Python library for rich text and beautiful formatting in the terminal.\n\n[![Supported Python Versions](https://camo.githubusercontent.com/e23c153f2a2d72a71e103bf6f0a6caebfaad68388c1a825d732b21e391fdc5b9/68747470733a2f2f696d672e736869656c64732e696f2f707970692f707976657273696f6e732f72696368)](https://pypi.org/project/rich/) [![PyPI version](https://camo.githubusercontent.com/24db632ce675f57d402ee9fc437453a686906a6f32af153f9c3fa8ee60b7fef6/68747470733a2f2f62616467652e667572792e696f2f70792f726963682e737667)](https://badge.fury.io/py/rich)\n\n[![Downloads](https://camo.githubusercontent.com/0b7b27c5ba681ca3167c15a7b9bf8dd068bd7d27c568a8b65ac187da0b5a3690/68747470733a2f2f706570792e746563682f62616467652f726963682f6d6f6e7468)](https://pepy.tech/project/rich)\n[![codecov](https://camo.githubusercontent.com/c8db208eccc5b78a42b8fa49af6e34b88bdd41690c90a73dd67af86cfa5de612/68747470733a2f2f696d672e736869656c64732e696f2f636f6465636f762f632f6769746875622f546578747561'}
+2025-07-10 08:59:38,581 - src.graph.nodes - INFO - Step '收集rich库的基本信息和安装指南' execution completed by researcher
+2025-07-10 08:59:38,584 - src.graph.nodes - INFO - Research team is collaborating on tasks.
+2025-07-10 08:59:38,585 - src.graph.nodes - INFO - Researcher node is researching.
+2025-07-10 08:59:38,586 - src.graph.nodes - INFO - Executing step: 研究rich库的基本用法和核心功能
+2025-07-10 09:00:07,390 - src.tools.decorators - INFO - Tool crawl_tool called with parameters: url=https://www.cnblogs.com/wang_yb/p/18013971
+2025-07-10 09:00:07,391 - src.crawler.jina_client - WARNING - Jina API key is not set. Provide your own key to access a higher rate limit. See https://jina.ai/reader for more information.
+2025-07-10 09:00:09,233 - src.tools.decorators - INFO - Tool crawl_tool returned: {'url': 'https://www.cnblogs.com/wang_yb/p/18013971', 'crawled_content': '# Python Rich：美化终端显示效果\n\n`Rich`库的功能就像它的名字一样，使`Python`编程更加丰富（rich），  \n它帮助开发者在控制台（命令行）输出中创建丰富、多彩和具有格式化的文本。\n\n本篇总结了如何使用`Rich`库让我们的命令行工具更加美观。\n\n1. 安装\n-----\n\n通过`pip`安装：\n\n```\npip install rich\n\n```\n\n使用下面的命令验证是否安装成功。\n\n```\npython -m rich\n\n```\n\n2. 应用示例\n-------\n\nRich的功能很多，下面通过代码示例来演示其中主要的功能。\n\n2.1. 美化 REPL 输出\n---------------\n\n安装`python`之后，在命令行输入`python`，就可以进入`python`的交互式命令行环境（REPL）。  \n因为`python`是解释性语言，所以可以在**REPL环境**中交互式的运行代码：  \n![image.png](https://img2024.cnblogs.com/blog/83005/202402/83005-20240212165336036-1722625404.png)  \n**注：**REPL全称: Read-Eval-Print-Loop (交互式解释器)\n\n默认的`REPL`是没有颜色的，使用`Rich`可以美化`REPL`的显示，获得更好的交互效果。  \n只需要导入`Rich`库的`pretty`即可。\n\n```\n>>> from rich import pretty\n>>> pretty.install()\n\n```\n\n再次运行上面的代码：  \n![image.png](https://img2024.cnblogs.com/blog/83005/202402/83005-20240212165336009-1878287072.png)  \n不同的数据类型会用不同的颜色来表示。\n\n2.2. 查看对象信息\n-----------\n\n`Rich`库中还提供了一个还有用的功能，用来查看`python`中各个变量或对象的详细信息。  \n使用前导入 `inspect` 函数。\n\n```\n>>> from rich import inspect\n\n```\n\n对于变量，查看其概括信息的方式如下：\n\n```\n>>> ins'}
+2025-07-10 09:00:36,101 - src.graph.nodes - INFO - Step '研究rich库的基本用法和核心功能' execution completed by researcher
+2025-07-10 09:00:36,103 - src.graph.nodes - INFO - Research team is collaborating on tasks.
+2025-07-10 09:00:36,104 - src.graph.nodes - INFO - Researcher node is researching.
+2025-07-10 09:00:36,105 - src.graph.nodes - INFO - Executing step: 探索rich库的高级功能和实际应用案例
+2025-07-10 11:24:34,666 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<Application.run_async() done, defined at /Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py:620> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 377, in create_beautiful_prompt
+    user_input = _get_styled_input(agent_display, style)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 406, in _get_styled_input
+    return _get_modern_input(agent_display)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 463, in _get_modern_input
+    return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1425, in prompt
+    return session.prompt(
+           ~~~~~~~~~~~~~~^
+        message,
+        ^^^^^^^^
+    ...<42 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1035, in prompt
+    return self.app.run(
+           ~~~~~~~~~~~~^
+        set_exception_handler=set_exception_handler,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 1002, in run
+    return asyncio.run(coro)
+           ~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 92, in run_until_complete
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 133, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 386, in __wakeup
+    self.__step()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 293, in __step
+    self.__step_run_and_handle_result(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 886, in run_async
+    return await _run_async(f)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 746, in _run_async
+    result = await f
+             ^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+KeyboardInterrupt
+2025-07-10 11:25:00,454 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<Application.run_async() done, defined at /Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py:620> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 377, in create_beautiful_prompt
+    user_input = _get_styled_input(agent_display, style)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 406, in _get_styled_input
+    return _get_modern_input(agent_display)
+  File "/Users/hanfeng/Desktop/su-cli/main.py", line 463, in _get_modern_input
+    return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1425, in prompt
+    return session.prompt(
+           ~~~~~~~~~~~~~~^
+        message,
+        ^^^^^^^^
+    ...<42 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/shortcuts/prompt.py", line 1035, in prompt
+    return self.app.run(
+           ~~~~~~~~~~~~^
+        set_exception_handler=set_exception_handler,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        inputhook=inputhook,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 1002, in run
+    return asyncio.run(coro)
+           ~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 92, in run_until_complete
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/nest_asyncio.py", line 133, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 386, in __wakeup
+    self.__step()
+    ~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 293, in __step
+    self.__step_run_and_handle_result(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 886, in run_async
+    return await _run_async(f)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/hanfeng/Desktop/su-cli/.venv/lib/python3.13/site-packages/prompt_toolkit/application/application.py", line 746, in _run_async
+    result = await f
+             ^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+KeyboardInterrupt

@@ -7,13 +7,14 @@
         "NODE_ENV": "production"
       }
     },
-    "brave-search": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "your_brave_api_key_here",
-        "NODE_ENV": "production"
-      }
+    "firecrawl-mcp": {
+      "command": "env",
+      "args": [
+        "FIRECRAWL_API_KEY=fc-c7a44ea5d5a84fbaa18b6c6222750ae3",
+        "npx",
+        "-y",
+        "firecrawl-mcp"
+      ]
     }
   }
 } 

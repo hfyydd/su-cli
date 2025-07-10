@@ -13,13 +13,14 @@ from rich.text import Text
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.align import Align
-from rich.prompt import Prompt
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.layout import Layout
 from rich.box import ROUNDED
 from rich_gradient import Text as GradientText
+
+# 提示工具包将按需导入
 
 # 国际化配置
 I18N = {
@@ -410,11 +411,38 @@ def _get_styled_input(agent_display: str, style: str) -> str:
     elif style == "colorful":
         return _get_colorful_input(agent_display)
     else:
-        return Prompt.ask("[bold green]SuCli >[/] ").strip()
+        return _get_default_input(agent_display)
+
+
+def _get_prompt_text(agent_display: str, style: str) -> str:
+    """生成提示符文本"""
+    if style == "modern":
+        if agent_display != "CLI":
+            return f"┌─ SuCli @ {agent_display} ─┐\n└─ ❯ "
+        else:
+            return "┌─ SuCli ─┐\n└─ ❯ "
+    elif style == "minimal":
+        if agent_display != "CLI":
+            return f"su:{agent_display.lower()} ❯ "
+        else:
+            return "su ❯ "
+    elif style == "classic":
+        if agent_display != "CLI":
+            return f"[SuCli@{agent_display}]$ "
+        else:
+            return "[SuCli]$ "
+    elif style == "colorful":
+        if agent_display != "CLI":
+            return f"🚀 SuCli 🤖 {agent_display} ➤ "
+        else:
+            return "🚀 SuCli ➤ "
+    else:
+        return "SuCli > "
 
 
 def _get_modern_input(agent_display: str) -> str:
     """现代简约风格输入"""
+    # 首先显示第一行
     first_line = Text()
     first_line.append("┌─ ", style="bright_cyan")
     first_line.append("SuCli", style="bold bright_white")
@@ -423,51 +451,81 @@ def _get_modern_input(agent_display: str) -> str:
         first_line.append(agent_display, style="bright_magenta")
     first_line.append(" ─┐", style="bright_cyan")
     
-    second_line = Text()
-    second_line.append("└─ ", style="bright_cyan")
-    second_line.append("❯ ", style="bold bright_green")
-    
     console.print(first_line)
-    return Prompt.ask(second_line).strip()
+    
+    # 使用同步输入避免事件循环冲突
+    try:
+        from prompt_toolkit import prompt
+        from prompt_toolkit.history import InMemoryHistory
+        # 在同步上下文中使用 prompt_toolkit
+        import nest_asyncio
+        nest_asyncio.apply()
+        return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+    except (ImportError, RuntimeError):
+        # Fallback 使用 rich prompt
+        from rich.prompt import Prompt
+        return Prompt.ask("└─ ❯ ").strip()
 
 
 def _get_minimal_input(agent_display: str) -> str:
     """极简风格输入"""
-    prompt_text = Text()
-    prompt_text.append("su", style="bold bright_blue")
     if agent_display != "CLI":
-        prompt_text.append(f":{agent_display.lower()}", style="bright_yellow")
-    prompt_text.append(" ❯ ", style="bold bright_green")
+        prompt_text = f"su:{agent_display.lower()} ❯ "
+    else:
+        prompt_text = "su ❯ "
     
-    return Prompt.ask(prompt_text).strip()
+    try:
+        from prompt_toolkit import prompt
+        from prompt_toolkit.history import InMemoryHistory
+        import nest_asyncio
+        nest_asyncio.apply()
+        return prompt(prompt_text, history=InMemoryHistory()).strip()
+    except (ImportError, RuntimeError):
+        from rich.prompt import Prompt
+        return Prompt.ask(prompt_text).strip()
 
 
 def _get_classic_input(agent_display: str) -> str:
     """经典风格输入"""
-    prompt_text = Text()
-    prompt_text.append("[", style="bright_white")
-    prompt_text.append("SuCli", style="bold bright_cyan")
     if agent_display != "CLI":
-        prompt_text.append("@", style="dim")
-        prompt_text.append(agent_display, style="bright_magenta")
-    prompt_text.append("]", style="bright_white")
-    prompt_text.append("$ ", style="bold bright_green")
+        prompt_text = f"[SuCli@{agent_display}]$ "
+    else:
+        prompt_text = "[SuCli]$ "
     
-    return Prompt.ask(prompt_text).strip()
+    try:
+        from prompt_toolkit import prompt
+        from prompt_toolkit.history import InMemoryHistory
+        return prompt(prompt_text, history=InMemoryHistory()).strip()
+    except ImportError:
+        from rich.prompt import Prompt
+        return Prompt.ask(prompt_text).strip()
 
 
 def _get_colorful_input(agent_display: str) -> str:
     """彩色风格输入"""
-    prompt_text = Text()
-    prompt_text.append("🚀 ", style="")
-    prompt_text.append("Su", style="bold red")
-    prompt_text.append("Cli", style="bold blue")
     if agent_display != "CLI":
-        prompt_text.append(" 🤖 ", style="")
-        prompt_text.append(agent_display, style="bold bright_magenta")
-    prompt_text.append(" ➤ ", style="bold bright_yellow")
+        prompt_text = f"🚀 SuCli 🤖 {agent_display} ➤ "
+    else:
+        prompt_text = "🚀 SuCli ➤ "
     
-    return Prompt.ask(prompt_text).strip()
+    try:
+        from prompt_toolkit import prompt
+        from prompt_toolkit.history import InMemoryHistory
+        return prompt(prompt_text, history=InMemoryHistory()).strip()
+    except ImportError:
+        from rich.prompt import Prompt
+        return Prompt.ask(prompt_text).strip()
+
+
+def _get_default_input(agent_display: str) -> str:
+    """默认输入方式"""
+    try:
+        from prompt_toolkit import prompt
+        from prompt_toolkit.history import InMemoryHistory
+        return prompt("SuCli > ", history=InMemoryHistory()).strip()
+    except ImportError:
+        from rich.prompt import Prompt
+        return Prompt.ask("SuCli > ").strip()
 
 
 def initialize_agent_system() -> bool:
@@ -705,22 +763,43 @@ def handle_user_interrupt(interrupt_data) -> Optional[str]:
     ))
     console.print()
     
-    # 获取用户输入
+    # 获取用户输入 - 使用 prompt_toolkit 支持中文输入
     try:
-        user_confirmation = Prompt.ask(
-            f"[bold green]{t('confirm_question')}[/bold green]",
-            choices=CONFIG["CONFIRMATION_CHOICES"],
-            default="yes",
-            show_choices=False
-        ).strip().lower()
-        
-        # 标准化用户输入
-        if user_confirmation in CONFIG["CONFIRMATION_YES"]:
-            console.print(f"✨ {t('confirm_accepted')}")
-            console.print()
-            return "[ACCEPTED]"
-        else:
-            return "[REJECTED]"
+        try:
+            from prompt_toolkit.shortcuts import confirm
+            result = confirm(f"{t('confirm_question')}", default=True)
+            if result:
+                console.print(f"✨ {t('confirm_accepted')}")
+                console.print()
+                return "[ACCEPTED]"
+            else:
+                return "[REJECTED]"
+        except ImportError:
+            # Fallback 手动输入
+            try:
+                from prompt_toolkit import prompt
+                from prompt_toolkit.history import InMemoryHistory
+                user_confirmation = prompt(
+                    f"{t('confirm_question')} ",
+                    history=InMemoryHistory()
+                ).strip().lower()
+            except ImportError:
+                # 最终 fallback 使用 rich prompt
+                from rich.prompt import Prompt
+                user_confirmation = Prompt.ask(
+                    f"{t('confirm_question')}",
+                    choices=CONFIG["CONFIRMATION_CHOICES"],
+                    default="yes",
+                    show_choices=False
+                ).strip().lower()
+            
+            # 标准化用户输入
+            if user_confirmation in CONFIG["CONFIRMATION_YES"]:
+                console.print(f"✨ {t('confirm_accepted')}")
+                console.print()
+                return "[ACCEPTED]"
+            else:
+                return "[REJECTED]"
             
     except (KeyboardInterrupt, EOFError):
         console.print(f"\n[yellow]{t('confirm_cancelled')}[/yellow]")

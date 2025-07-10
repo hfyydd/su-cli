@@ -32,6 +32,8 @@ dependencies = [
     "arxiv>=2.2.0",
     "mcp>=1.6.0",
     "langchain-mcp-adapters>=0.0.9",
+    "prompt-toolkit>=3.0.43",
+    "nest-asyncio>=1.5.0",
 ]
 
 [project.optional-dependencies]
