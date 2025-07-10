@@ -21,16 +21,235 @@ from rich.layout import Layout
 from rich.box import ROUNDED
 from rich_gradient import Text as GradientText
 
+# 国际化配置
+I18N = {
+    "en": {
+        # Welcome and titles
+        "welcome_title": "🚀 Welcome to Su-Cli command line tool!",
+        "welcome_subtitle": "A powerful and simple command line assistant", 
+        "quick_start_guide": "✨ Quick Start Guide ✨",
+        "tips": [
+            "🤖 Chat with Agent",
+            "🔗 Support MCP Protocol",
+            "⚡ Based on LangGraph",
+            "🔄 Support interrupt recovery"
+        ],
+        "footer_help": "Type '/help' or '/h' for more help | Type '/exit' or '/q' to quit",
+        
+        # Commands and help
+        "help_title": "🔧 Help",
+        "help_content": """[bold cyan]Su-Cli Help Information[/bold cyan]
+
+📋 [yellow]Available Commands:[/yellow]
+  • [green]/help[/green] | [green]/h[/green] - Show this help information
+  • [green]/exit[/green] | [green]/q[/green] - Exit program
+  • [green]/clear[/green] - Clear screen
+  • [green]/agents[/green] - Show available agents
+  • [green]/use <name>[/green] - Switch to specified agent
+  • [green]/history[/green] - Show conversation history
+  • [green]/reset[/green] - Clear conversation history and reset thread
+  • [green]/style[/green] - Show available interface styles
+  • [green]/style <name>[/green] - Switch to specified style
+  • [green]/lang[/green] - Show current language settings
+  • [green]/set_lang <lang>[/green] - Set language (en/zh)
+
+🤔 [yellow]Interrupt Feature:[/yellow]
+  • Agent will request your confirmation when needed
+  • Type 'yes', 'y' to agree
+  • Type other content to cancel operation
+
+💡 [yellow]Tip:[/yellow] Type message directly to chat with current agent""",
+        
+        # Agent messages
+        "agents_title": "🤖 Agents",
+        "agents_current": "Current agent:",
+        "no_agents": "No available agents",
+        "agent_switch_success": "Switched to agent: {}",
+        "agent_not_found": "Agent '{}' does not exist",
+        "agent_available": "Available agents: {}",
+        
+        # History
+        "history_title": "📝 Conversation History ({} conversations)",
+        "no_history": "📝 No conversation history",
+        "history_reset": "🔄 Conversation history cleared, new thread started",
+        
+        # Styles
+        "style_title": "🎨 Interface Styles",
+        "style_current": "Current style:",
+        "style_available": "Available styles:",
+        "style_switch_success": "Switched to {} style",
+        "style_not_found": "Style '{}' does not exist",
+        "style_available_list": "Available styles: {}",
+        
+        # Language
+        "lang_title": "🌐 Language Settings",
+        "lang_current": "Current language:",
+        "lang_available": "Available languages:",
+        "lang_switch_success": "Language switched to {}",
+        "lang_not_found": "Language '{}' not supported",
+        "lang_available_list": "Available languages: {}",
+        
+        # System messages
+        "system_initializing": "Starting to initialize agent system",
+        "system_ready": "Agent system is ready, currently using: {}",
+        "system_init_failed": "Failed to initialize agent system: {}",
+        "system_init_warning": "Agent system initialization failed, some features will be unavailable",
+        
+        # Agent operations
+        "agent_loading": "Loading agent: {}",
+        "agent_load_failed": "Unable to load agent module: {}",
+        "agent_no_graph": "Agent {} has no graph object",
+        "agent_thinking": "{} is thinking...",
+        "agent_processing": "{} is processing your confirmation...",
+        "agent_no_interrupt": "This agent does not support interrupt recovery, cannot continue",
+        "agent_interrupt_tip": "Tip: You can restart the conversation",
+        
+        # Errors
+        "error_import_core": "Failed to import core module: {}",
+        "error_no_agent": "No available agent",
+        "error_agent_load": "Unable to load agent: {}",
+        "error_agent_call": "Failed to call agent: {}",
+        "error_operation_failed": "Operation failed, please try again",
+        "error_command_import": "Unable to import Command, please check langgraph version",
+        
+        # Confirmations
+        "confirm_title": "🤔 Need Your Confirmation",
+        "confirm_question": "Do you confirm to process this request? (yes/no)",
+        "confirm_accepted": "✨ Confirmed, processing...",
+        "confirm_cancelled": "Operation cancelled",
+        
+        # General
+        "goodbye": "👋 Thank you for using Su-Cli, goodbye!",
+        "user_label": "USER",
+        "assistant_label": "Assistant",
+        "processing": "Processing...",
+        "please_confirm": "Please confirm",
+        "retry": "Please try again",
+        "cancelled": "Cancelled",
+        "thinking": "Thinking...",
+        "confirmed": "Confirmed",
+        "rejected": "Rejected",
+    },
+    "zh": {
+        # Welcome and titles
+        "welcome_title": "🚀 欢迎使用 Su-Cli 命令行工具！",
+        "welcome_subtitle": "一个强大而简洁的命令行助手",
+        "quick_start_guide": "✨ 快速开始指南 ✨",
+        "tips": [
+            "🤖 与Agent 对话交流",
+            "🔗 支持 MCP 协议集成", 
+            "⚡ 基于 LangGraph ",
+            "🔄 支持中断恢复功能"
+        ],
+        "footer_help": "输入 '/help' 或 '/h' 获取更多帮助信息 | 输入 '/exit' 或 '/q' 退出程序",
+        
+        # Commands and help
+        "help_title": "🔧 帮助",
+        "help_content": """[bold cyan]Su-Cli 帮助信息[/bold cyan]
+
+📋 [yellow]可用命令：[/yellow]
+  • [green]/help[/green] | [green]/h[/green] - 显示此帮助信息
+  • [green]/exit[/green] | [green]/q[/green] - 退出程序
+  • [green]/clear[/green] - 清屏
+  • [green]/agents[/green] - 显示可用的 agents
+  • [green]/use <name>[/green] - 切换到指定的 agent
+  • [green]/history[/green] - 显示对话历史
+  • [green]/reset[/green] - 清空对话历史并重置对话线程
+  • [green]/style[/green] - 显示可用的界面风格
+  • [green]/style <name>[/green] - 切换到指定风格
+  • [green]/lang[/green] - 显示当前语言设置
+  • [green]/set_lang <lang>[/green] - 设置语言 (en/zh)
+
+🤔 [yellow]中断功能：[/yellow]
+  • Agent 会在需要时请求您的确认
+  • 输入 'yes'、'y'、'是'、'确认' 来同意
+  • 输入其他内容来取消操作
+
+💡 [yellow]提示：[/yellow] 直接输入消息与当前 agent 对话""",
+        
+        # Agent messages
+        "agents_title": "🤖 Agents",
+        "agents_current": "当前 agent:",
+        "no_agents": "没有可用的 agents",
+        "agent_switch_success": "已切换到 agent: {}",
+        "agent_not_found": "Agent '{}' 不存在",
+        "agent_available": "可用的 agents: {}",
+        
+        # History
+        "history_title": "📝 对话历史 ({} 轮对话)",
+        "no_history": "📝 暂无对话历史",
+        "history_reset": "🔄 对话历史已清空，已开始新的对话线程",
+        
+        # Styles
+        "style_title": "🎨 界面风格",
+        "style_current": "当前风格:",
+        "style_available": "可用风格:",
+        "style_switch_success": "已切换到 {} 风格",
+        "style_not_found": "风格 '{}' 不存在",
+        "style_available_list": "可用风格: {}",
+        
+        # Language
+        "lang_title": "🌐 语言设置",
+        "lang_current": "当前语言:",
+        "lang_available": "可用语言:",
+        "lang_switch_success": "语言已切换到 {}",
+        "lang_not_found": "不支持语言 '{}'",
+        "lang_available_list": "可用语言: {}",
+        
+        # System messages
+        "system_initializing": "开始初始化 agent 系统",
+        "system_ready": "Agent 系统已就绪，当前使用: {}",
+        "system_init_failed": "初始化 agent 系统失败: {}",
+        "system_init_warning": "Agent 系统初始化失败，部分功能将不可用",
+        
+        # Agent operations
+        "agent_loading": "开始加载 agent: {}",
+        "agent_load_failed": "无法加载 agent 模块: {}",
+        "agent_no_graph": "Agent {} 没有 graph 对象",
+        "agent_thinking": "{} 正在思考...",
+        "agent_processing": "{} 正在处理您的确认...",
+        "agent_no_interrupt": "该 agent 不支持中断恢复功能，无法继续执行",
+        "agent_interrupt_tip": "提示: 可以重新开始对话",
+        
+        # Errors
+        "error_import_core": "导入 core 模块失败: {}",
+        "error_no_agent": "没有可用的 agent",
+        "error_agent_load": "无法加载 agent: {}",
+        "error_agent_call": "调用 agent 失败: {}",
+        "error_operation_failed": "操作失败，请重试",
+        "error_command_import": "无法导入Command，请检查langgraph版本",
+        
+        # Confirmations
+        "confirm_title": "🤔 需要您的确认",
+        "confirm_question": "您确认要处理这个请求吗？ (yes/no)",
+        "confirm_accepted": "✨ 已确认，继续处理中...",
+        "confirm_cancelled": "操作已取消",
+        
+        # General
+        "goodbye": "👋 感谢使用 Su-Cli，再见！",
+        "user_label": "用户",
+        "assistant_label": "助手",
+        "processing": "正在处理...",
+        "please_confirm": "请确认",
+        "retry": "请重试",
+        "cancelled": "已取消",
+        "thinking": "正在思考...",
+        "confirmed": "已确认",
+        "rejected": "已拒绝",
+    }
+}
+
 # 配置常量
 CONFIG = {
     "LOGGING_LEVEL": logging.WARNING,
     "PROMPT_STYLES": {
-        "modern": "现代简约风格 (带边框)",
-        "minimal": "极简风格",
-        "classic": "经典风格 (类似 bash)",
-        "colorful": "彩色风格 (带图标)"
+        "modern": {"en": "Modern minimalist style (with border)", "zh": "现代简约风格 (带边框)"},
+        "minimal": {"en": "Minimal style", "zh": "极简风格"},
+        "classic": {"en": "Classic style (bash-like)", "zh": "经典风格 (类似 bash)"},
+        "colorful": {"en": "Colorful style (with icons)", "zh": "彩色风格 (带图标)"}
     },
     "DEFAULT_PROMPT_STYLE": "modern",
+    "DEFAULT_LANGUAGE": "en",
     "CONFIRMATION_CHOICES": ["yes", "y", "是", "确认", "no", "n", "否", "取消"],
     "CONFIRMATION_YES": ["yes", "y", "是", "确认"],
     "EXIT_COMMANDS": ['/exit', '/quit', '/q', 'exit', 'quit'],
@@ -40,6 +259,7 @@ CONFIG = {
     "HISTORY_COMMANDS": ['/history', 'history'],
     "RESET_COMMANDS": ['/reset', 'reset'],
     "STYLE_COMMANDS": ['/style', 'style'],
+    "LANG_COMMANDS": ['/lang', 'lang'],
 }
 
 # 设置日志级别和格式
@@ -64,7 +284,7 @@ sys.path.insert(0, str(Path(__file__).parent / "core"))
 try:
     from core import scanner, scan_agents, get_available_agents, get_valid_agents
 except ImportError as e:
-    logger.error(f"导入 core 模块失败: {e}")
+    logger.error(f"Failed to import core module: {e}")
     sys.exit(1)
 
 # 全局变量
@@ -73,7 +293,67 @@ conversation_history = []
 current_agent = None
 available_agents = []
 prompt_style = CONFIG["DEFAULT_PROMPT_STYLE"]
+current_language = CONFIG["DEFAULT_LANGUAGE"]
 current_thread_id = str(uuid.uuid4())
+
+
+def t(key: str, *args, **kwargs) -> str:
+    """
+    获取当前语言的翻译文本
+    
+    Args:
+        key: 翻译键
+        *args: 格式化参数
+        **kwargs: 格式化参数
+    
+    Returns:
+        str: 翻译后的文本
+    """
+    global current_language
+    
+    text = I18N.get(current_language, {}).get(key, key)
+    
+    # 如果当前语言没有该键，尝试使用英语
+    if text == key and current_language != "en":
+        text = I18N.get("en", {}).get(key, key)
+    
+    # 格式化文本
+    if args:
+        try:
+            text = text.format(*args)
+        except (IndexError, ValueError):
+            pass
+    
+    if kwargs:
+        try:
+            text = text.format(**kwargs)
+        except (KeyError, ValueError):
+            pass
+    
+    return text
+
+
+def get_available_languages() -> List[str]:
+    """获取可用语言列表"""
+    return list(I18N.keys())
+
+
+def set_language(lang: str) -> bool:
+    """
+    设置当前语言
+    
+    Args:
+        lang: 语言代码
+    
+    Returns:
+        bool: 是否设置成功
+    """
+    global current_language
+    
+    if lang in I18N:
+        current_language = lang
+        return True
+    return False
 
 
 def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "modern") -> str:
@@ -107,7 +387,7 @@ def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "mode
         return user_input
         
     except (KeyboardInterrupt, EOFError):
-        console.print("\n👋 再见！")
+        console.print(f"\n{t('goodbye')}")
         return "/exit"
 
 
@@ -195,15 +475,15 @@ def initialize_agent_system() -> bool:
     global available_agents, current_agent
     
     try:
-        logger.info("开始初始化 agent 系统")
+        logger.info(t("system_initializing"))
         agents = scan_agents()
         # 只获取有效的 agents
         valid_agents = get_valid_agents()
         available_agents = list(valid_agents.keys())
         
         if not available_agents:
-            logger.warning("没有发现可用的 agents")
-            console.print("❌ [red]没有发现可用的 agents[/red]")
+            logger.warning(t("no_agents"))
+            console.print(f"❌ [red]{t('no_agents')}[/red]")
             return False
         
         # 默认选择 'default' agent，如果不存在则选择第一个 agent
@@ -211,14 +491,14 @@ def initialize_agent_system() -> bool:
             current_agent = "default"
         else:
             current_agent = available_agents[0]
-        logger.info(f"Agent 系统初始化成功，当前使用: {current_agent}")
-        console.print(f"✅ [green]Agent 系统已就绪，当前使用: {current_agent}[/green]")
+        logger.info(t("system_ready", current_agent))
+        console.print(f"✅ [green]{t('system_ready', current_agent)}[/green]")
         
         return True
         
     except Exception as e:
-        logger.error(f"初始化 agent 系统失败: {e}", exc_info=True)
-        console.print(f"❌ [red]初始化 agent 系统失败: {e}[/red]")
+        logger.error(t("system_init_failed", e), exc_info=True)
+        console.print(f"❌ [red]{t('system_init_failed', e)}[/red]")
         return False
 
 
@@ -267,17 +547,17 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
         tuple: (graph, graph_with_memory) - 普通graph和带内存的graph
     """
     try:
-        logger.debug(f"开始加载 agent: {agent_name}")
+        logger.debug(t("agent_loading", agent_name))
         
         # 加载 agent 模块
         module = scanner.load_agent_module(agent_name)
         if not module:
-            logger.error(f"无法加载 agent 模块: {agent_name}")
+            logger.error(t("agent_load_failed", agent_name))
             return None, None
         
         # 获取 graph 对象
         if not hasattr(module, 'graph'):
-            logger.error(f"Agent {agent_name} 没有 graph 对象")
+            logger.error(t("agent_no_graph", agent_name))
             return None, None
         
         graph = module.graph
@@ -289,16 +569,16 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
             if agent_info:
                 graph_with_memory = _build_graph_with_memory(agent_info)
                 if graph_with_memory:
-                    logger.debug(f"成功创建带内存的 graph: {agent_name}")
+                    logger.debug(f"Successfully created graph with memory: {agent_name}")
                 else:
-                    logger.debug(f"无法创建带内存的 graph: {agent_name}")
+                    logger.debug(f"Unable to create graph with memory: {agent_name}")
         except Exception as e:
-            logger.debug(f"创建带内存的 graph 失败: {e}")
+            logger.debug(f"Failed to create graph with memory: {e}")
         
         return graph, graph_with_memory
         
     except Exception as e:
-        logger.error(f"加载 agent graph 失败: {e}", exc_info=True)
+        logger.error(f"Failed to load agent graph: {e}", exc_info=True)
         return None, None
 
 
@@ -420,17 +700,17 @@ def handle_user_interrupt(interrupt_data) -> Optional[str]:
     
     # 处理不同类型的中断数据
     if isinstance(interrupt_data, str):
-        panel_content = f"[yellow]📋 {interrupt_data}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+        panel_content = f"[yellow]📋 {interrupt_data}[/yellow]\n\n[cyan]❓ {t('please_confirm')}[/cyan]"
     elif isinstance(interrupt_data, dict):
         message = interrupt_data.get('message', '')
-        question = interrupt_data.get('question', '请确认')
+        question = interrupt_data.get('question', t('please_confirm'))
         panel_content = f"[yellow]📋 {message}[/yellow]\n\n[cyan]❓ {question}[/cyan]"
     else:
-        panel_content = f"[yellow]📋 {str(interrupt_data)}[/yellow]\n\n[cyan]❓ 请确认[/cyan]"
+        panel_content = f"[yellow]📋 {str(interrupt_data)}[/yellow]\n\n[cyan]❓ {t('please_confirm')}[/cyan]"
     
     console.print(Panel(
         panel_content,
-        title="🤔 需要您的确认",
+        title=t("confirm_title"),
         border_style="yellow",
         padding=(1, 2)
     ))
@@ -439,7 +719,7 @@ def handle_user_interrupt(interrupt_data) -> Optional[str]:
     # 获取用户输入
     try:
         user_confirmation = Prompt.ask(
-            "[bold green]您确认要处理这个请求吗？ (yes/no)[/bold green]",
+            f"[bold green]{t('confirm_question')}[/bold green]",
             choices=CONFIG["CONFIRMATION_CHOICES"],
             default="yes",
             show_choices=False
@@ -447,14 +727,14 @@ def handle_user_interrupt(interrupt_data) -> Optional[str]:
         
         # 标准化用户输入
         if user_confirmation in CONFIG["CONFIRMATION_YES"]:
-            console.print(f"✨ 已确认，继续处理中...")
+            console.print(f"✨ {t('confirm_accepted')}")
             console.print()
             return "[ACCEPTED]"
         else:
             return "[REJECTED]"
             
     except (KeyboardInterrupt, EOFError):
-        console.print("\n[yellow]操作已取消[/yellow]")
+        console.print(f"\n[yellow]{t('confirm_cancelled')}[/yellow]")
         return None
 
 
@@ -466,8 +746,8 @@ async def resume_after_interrupt(graph_with_memory, user_confirmation: str, conf
         str: 恢复后的完整响应
     """
     if graph_with_memory is None:
-        console.print("[yellow]⚠️ 该 agent 不支持中断恢复功能，无法继续执行[/yellow]")
-        console.print("[cyan]💡 提示: 可以重新开始对话[/cyan]")
+        console.print(f"[yellow]{t('agent_no_interrupt')}[/yellow]")
+        console.print(f"[cyan]{t('agent_interrupt_tip')}[/cyan]")
         return ""
     
     try:
@@ -513,10 +793,10 @@ async def resume_after_interrupt(graph_with_memory, user_confirmation: str, conf
         return resume_response
         
     except ImportError:
-        console.print("❌ [red]无法导入Command，请检查langgraph版本[/red]")
+        console.print(f"❌ [red]{t('error_command_import')}[/red]")
         return ""
     except Exception as resume_error:
-        console.print(f"❌ [red]操作失败，请重试[/red]")
+        console.print(f"❌ [red]{t('retry')}[/red]")
         return ""
 
 
@@ -528,7 +808,7 @@ def display_agent_response(response: str, agent_name: str):
         return
     
     # 创建更简洁的对话显示
-    agent_display = agent_name.replace("a_simple_agent_quickstart", "助手")
+    agent_display = agent_name.replace("a_simple_agent_quickstart", t("assistant_label"))
     agent_display = agent_display.replace("_", " ").title()
     
     response_text = Text()
@@ -548,13 +828,13 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     global current_agent, conversation_history, current_thread_id
     
     if not current_agent:
-        console.print("❌ [red]没有可用的 agent[/red]")
+        console.print(f"❌ [red]{t('error_no_agent')}[/red]")
         return None
     
     # 加载 agent 的 graph 对象
     graph, graph_with_memory = load_agent_graph(current_agent)
     if not graph:
-        console.print(f"❌ [red]无法加载 agent: {current_agent}[/red]")
+        console.print(f"❌ [red]{t('error_agent_load', current_agent)}[/red]")
         return None
     
     # 构造输入状态和配置
@@ -568,15 +848,15 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
     full_response = ""
     current_interrupt = None
     
-    with console.status(f"[cyan]{current_agent}[/cyan] 正在思考...", spinner="dots"):
+    with console.status(f"[cyan]{current_agent}[/cyan] {t('agent_thinking', current_agent)}", spinner="dots"):
         try:
             # 处理流式响应
             full_response, current_interrupt = await process_stream_chunks(
                 target_graph, state, config
             )
         except Exception as invoke_error:
-            logger.error(f"调用 agent 失败: {invoke_error}", exc_info=True)
-            console.print(f"❌ [red]调用 agent 失败: {invoke_error}[/red]")
+            logger.error(t("error_agent_call", invoke_error), exc_info=True)
+            console.print(f"❌ [red]{t('error_agent_call', invoke_error)}[/red]")
             return None
     
     # 处理中断情况
@@ -588,7 +868,7 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
             return None
         
         # 恢复执行
-        with console.status(f"[cyan]{current_agent}[/cyan] 正在处理您的确认...", spinner="dots"):
+        with console.status(f"[cyan]{current_agent}[/cyan] {t('agent_processing', current_agent)}", spinner="dots"):
             resume_response = await resume_after_interrupt(
                 graph_with_memory, user_confirmation, config
             )
@@ -637,22 +917,22 @@ def create_welcome_screen():
     
     # 创建柔和渐变欢迎信息
     welcome_text = GradientText(
-        "\n🚀 欢迎使用 Su-Cli 命令行工具！",
+        f"\n{t('welcome_title')}",
         colors=["#6a85b6", "#baa6dc", "#a8c8ec"]  # 柔和蓝紫色过渡
     )
     
     # 创建柔和渐变副标题
     subtitle = GradientText(
-        "一个强大而简洁的命令行助手",
+        f"{t('welcome_subtitle')}",
         colors=["#889abb", "#9baed6", "#adc3ee"]  # 更柔和的蓝色过渡
     )
     
     # 创建使用提示 - 使用渐变效果
     tips = [
-        "🤖 与Agent 对话交流",
-        "🔗 支持 MCP 协议集成", 
-        "⚡ 基于 LangGraph ",
-        "🔄 支持中断恢复功能"
+        t("tips")[0],
+        t("tips")[1], 
+        t("tips")[2],
+        t("tips")[3]
     ]
     
     # 为每个提示创建柔和渐变文本
@@ -683,7 +963,7 @@ def create_welcome_screen():
     
     # 显示提示面板 - 使用柔和渐变效果
     guide_title = GradientText(
-        "✨ 快速开始指南 ✨",
+        f"{t('quick_start_guide')}",
         colors=["#a8c8ec", "#baa6dc", "#d1a3e8"]  # 柔和蓝紫色过渡
     )
     console.print(Align.center(guide_title))
@@ -693,7 +973,7 @@ def create_welcome_screen():
     
     # 底部信息
     footer = Panel(
-        Align.center(Text("输入 '/help' 或 '/h' 获取更多帮助信息 | 输入 '/exit' 或 '/q' 退出程序", style="dim white")),
+        Align.center(Text(f"{t('footer_help')}", style="dim white")),
         style="dim blue",
         border_style="dim"
     )
@@ -715,7 +995,7 @@ async def handle_command(command: str) -> bool:
         return True
         
     if command.lower() in CONFIG["EXIT_COMMANDS"]:
-        console.print("👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
+        console.print(f"\n{t('goodbye')}")
         return False
     elif command.lower() in CONFIG["HELP_COMMANDS"]:
         _show_help()
@@ -734,10 +1014,14 @@ async def handle_command(command: str) -> bool:
         _show_styles()
     elif command.lower().startswith('/style '):
         _switch_style(command[7:].strip().lower())
+    elif command.lower().startswith('/set_lang '):
+        _set_language(command[10:].strip().lower())
+    elif command.lower() in CONFIG["LANG_COMMANDS"]:
+        _show_language()
     else:
         # 处理普通对话
         if not current_agent:
-            console.print("❌ [red]没有可用的 agent，请先初始化系统[/red]")
+            console.print(f"❌ [red]{t('error_no_agent')}[/red]")
             return True
         
         # 调用 agent 进行对话
@@ -749,21 +1033,9 @@ async def handle_command(command: str) -> bool:
 def _show_help():
     """显示帮助信息"""
     console.print(Panel.fit(
-        "[bold cyan]Su-Cli 帮助信息[/bold cyan]\n\n"
-        "📋 [yellow]可用命令：[/yellow]\n"
-        "  • [green]/help[/green] | [green]/h[/green] - 显示此帮助信息\n"
-        "  • [green]/exit[/green] | [green]/q[/green] - 退出程序\n"
-        "  • [green]/clear[/green] - 清屏\n"
-        "  • [green]/agents[/green] - 显示可用的 agents\n"
-        "  • [green]/use <name>[/green] - 切换到指定的 agent\n"
-        "  • [green]/history[/green] - 显示对话历史\n"
-        "  • [green]/reset[/green] - 清空对话历史并重置对话线程\n\n"
-        "🤔 [yellow]中断功能：[/yellow]\n"
-        "  • Agent 会在需要时请求您的确认\n"
-        "  • 输入 'yes'、'y'、'是'、'确认' 来同意\n"
-        "  • 输入其他内容来取消操作\n\n"
-        "💡 [yellow]提示：[/yellow] 直接输入消息与当前 agent 对话",
-        title="🔧 帮助",
+        f"[bold cyan]{t('help_title')}[/bold cyan]\n\n"
+        f"{t('help_content')}",
+        title=t("help_title"),
         border_style="cyan"
     ))
 
@@ -776,13 +1048,13 @@ def _show_agents():
             for agent in available_agents
         ])
         console.print(Panel.fit(
-            f"[bold cyan]可用的 Agents[/bold cyan]\n\n{agent_list}\n\n"
-            f"[yellow]当前 agent:[/yellow] [green]{current_agent}[/green]",
-            title="🤖 Agents",
+            f"[bold cyan]{t('agents_title')}[/bold cyan]\n\n{agent_list}\n\n"
+            f"[yellow]{t('agents_current')}[/yellow] [green]{current_agent}[/green]",
+            title=t("agents_title"),
             border_style="cyan"
         ))
     else:
-        console.print("❌ [red]没有可用的 agents[/red]")
+        console.print(f"❌ [red]{t('no_agents')}[/red]")
 
 
 def _switch_agent(agent_name: str):
@@ -791,10 +1063,10 @@ def _switch_agent(agent_name: str):
     
     if agent_name in available_agents:
         current_agent = agent_name
-        console.print(f"✅ [green]已切换到 agent: {current_agent}[/green]")
+        console.print(f"✅ [green]{t('agent_switch_success', current_agent)}[/green]")
     else:
-        console.print(f"❌ [red]Agent '{agent_name}' 不存在[/red]")
-        console.print(f"💡 [yellow]可用的 agents: {', '.join(available_agents)}[/yellow]")
+        console.print(f"❌ [red]{t('agent_not_found', agent_name)}[/red]")
+        console.print(f"💡 [yellow]{t('agent_available', ', '.join(available_agents))}[/yellow]")
 
 
 def _show_history():
@@ -804,16 +1076,17 @@ def _show_history():
         for msg in conversation_history:
             role_emoji = "👤" if msg["role"] == "user" else "🤖"
             role_color = "blue" if msg["role"] == "user" else "green"
+            role_label = t("user_label") if msg["role"] == "user" else t("assistant_label")
             content = msg['content'][:100] + ('...' if len(msg['content']) > 100 else '')
-            history_text += f"{role_emoji} [{role_color}]{msg['role'].upper()}[/{role_color}]: {content}\n\n"
+            history_text += f"{role_emoji} [{role_color}]{role_label.upper()}[/{role_color}]: {content}\n\n"
         
         console.print(Panel.fit(
             history_text.strip(),
-            title=f"📝 对话历史 ({len(conversation_history)//2} 轮对话)",
+            title=t("history_title", len(conversation_history)//2),
             border_style="yellow"
         ))
     else:
-        console.print("📝 [yellow]暂无对话历史[/yellow]")
+        console.print(f"📝 [yellow]{t('no_history')}[/yellow]")
 
 
 def _reset_conversation():
@@ -822,21 +1095,23 @@ def _reset_conversation():
     
     conversation_history.clear()
     current_thread_id = str(uuid.uuid4())
-    console.print("🔄 [green]对话历史已清空，已开始新的对话线程[/green]")
+    console.print(f"🔄 [green]{t('history_reset')}[/green]")
 
 
 def _show_styles():
     """显示可用的风格"""
-    style_text = f"[yellow]当前风格:[/yellow] [green]{prompt_style}[/green] - {CONFIG['PROMPT_STYLES'].get(prompt_style, '未知')}\n\n"
-    style_text += "[yellow]可用风格:[/yellow]\n"
+    current_style_desc = CONFIG['PROMPT_STYLES'].get(prompt_style, {}).get(current_language, "Unknown")
+    style_text = f"[yellow]{t('style_current')}[/yellow] [green]{prompt_style}[/green] - {current_style_desc}\n\n"
+    style_text += f"[yellow]{t('style_available')}[/yellow]\n"
     
-    for style_name, description in CONFIG['PROMPT_STYLES'].items():
+    for style_name, descriptions in CONFIG['PROMPT_STYLES'].items():
         indicator = "🎯 " if style_name == prompt_style else "   "
+        description = descriptions.get(current_language, style_name)
         style_text += f"{indicator}[cyan]{style_name}[/cyan] - {description}\n"
     
     console.print(Panel.fit(
         style_text.strip(),
-        title="🎨 界面风格",
+        title=t("style_title"),
         border_style="magenta"
     ))
 
@@ -847,10 +1122,38 @@ def _switch_style(style_name: str):
     
     if style_name in CONFIG['PROMPT_STYLES']:
         prompt_style = style_name
-        console.print(f"✅ [green]已切换到 {style_name} 风格[/green]")
+        console.print(f"✅ [green]{t('style_switch_success', style_name)}[/green]")
     else:
-        console.print(f"❌ [red]风格 '{style_name}' 不存在[/red]")
-        console.print(f"💡 [yellow]可用风格: {', '.join(CONFIG['PROMPT_STYLES'].keys())}[/yellow]")
+        console.print(f"❌ [red]{t('style_not_found', style_name)}[/red]")
+        console.print(f"💡 [yellow]{t('style_available_list', ', '.join(CONFIG['PROMPT_STYLES'].keys()))}[/yellow]")
+
+
+def _show_language():
+    """显示语言设置"""
+    lang_descriptions = {"en": "English", "zh": "中文"}
+    lang_text = f"[yellow]{t('lang_current')}[/yellow] [green]{current_language}[/green] - {lang_descriptions.get(current_language, current_language)}\n\n"
+    lang_text += f"[yellow]{t('lang_available')}[/yellow]\n"
+    
+    for lang_code in get_available_languages():
+        indicator = "🌐 " if lang_code == current_language else "   "
+        lang_name = lang_descriptions.get(lang_code, lang_code)
+        lang_text += f"{indicator}[cyan]{lang_code}[/cyan] - {lang_name}\n"
+    
+    console.print(Panel.fit(
+        lang_text.strip(),
+        title=t("lang_title"),
+        border_style="green"
+    ))
+
+
+def _set_language(lang: str):
+    """设置当前语言"""
+    if set_language(lang):
+        console.print(f"✅ [green]{t('lang_switch_success', lang)}[/green]")
+    else:
+        console.print(f"❌ [red]{t('lang_not_found', lang)}[/red]")
+        console.print(f"💡 [yellow]{t('lang_available_list', ', '.join(get_available_languages()))}[/yellow]")
+
 
 async def main():
     """主函数"""
@@ -860,7 +1163,7 @@ async def main():
     
     # 初始化 agent 系统
     if not initialize_agent_system():
-        console.print("⚠️ [yellow]Agent 系统初始化失败，部分功能将不可用[/yellow]")
+        console.print(f"⚠️ [yellow]{t('system_init_warning')}[/yellow]")
     
     console.print()
     
@@ -872,7 +1175,7 @@ async def main():
             
             # 处理退出命令
             if user_input in ["/exit", "/q"]:
-                console.print("👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
+                console.print(f"\n{t('goodbye')}")
                 break
             
             # 处理命令
@@ -881,10 +1184,10 @@ async def main():
                 break
                 
         except KeyboardInterrupt:
-            console.print("\n👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
+            console.print(f"\n{t('goodbye')}")
             break
         except EOFError:
-            console.print("\n👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
+            console.print(f"\n{t('goodbye')}")
             break
 
 def run_main():
@@ -892,7 +1195,7 @@ def run_main():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        console.print("\n👋 [bold green]感谢使用 Su-Cli，再见！[/bold green]")
+        console.print(f"\n{t('goodbye')}")
 
 if __name__ == "__main__":
     run_main()
