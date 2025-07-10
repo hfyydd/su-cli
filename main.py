@@ -916,7 +916,7 @@ def create_welcome_screen():
         colors=["#889abb", "#9baed6", "#adc3ee"]  # 更柔和的蓝色过渡
     )
     
-    # 创建使用提示 - 使用渐变效果
+    # 创建使用提示 - 使用渐变效果和统一尺寸
     tips = [
         t("tips")[0],
         t("tips")[1], 
@@ -935,8 +935,9 @@ def create_welcome_screen():
     tip_panels = []
     for i, tip in enumerate(tips):
         gradient_tip = GradientText(tip, colors=gradient_colors[i])
-        border_color = ["green", "yellow", "blue", "magenta"][i]
-        tip_panels.append(Panel(gradient_tip, style=border_color, width=25))
+        
+        # 直接使用居中的渐变文本，不添加边框
+        tip_panels.append(Align.center(gradient_tip))
     
     # 组合所有元素
     header = Align.center(title)
@@ -957,7 +958,7 @@ def create_welcome_screen():
     )
     console.print(Align.center(guide_title))
     console.print()
-    console.print(Columns(tip_panels, equal=True, expand=True))
+    console.print(Columns(tip_panels, equal=True, expand=True, padding=(0, 1)))
     console.print()
     
     # 底部信息
