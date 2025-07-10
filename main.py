@@ -475,14 +475,12 @@ def initialize_agent_system() -> bool:
     global available_agents, current_agent
     
     try:
-        logger.info(t("system_initializing"))
         agents = scan_agents()
         # 只获取有效的 agents
         valid_agents = get_valid_agents()
         available_agents = list(valid_agents.keys())
         
         if not available_agents:
-            logger.warning(t("no_agents"))
             console.print(f"❌ [red]{t('no_agents')}[/red]")
             return False
         
@@ -491,7 +489,6 @@ def initialize_agent_system() -> bool:
             current_agent = "default"
         else:
             current_agent = available_agents[0]
-        logger.info(t("system_ready", current_agent))
         console.print(f"✅ [green]{t('system_ready', current_agent)}[/green]")
         
         return True
@@ -547,17 +544,13 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
         tuple: (graph, graph_with_memory) - 普通graph和带内存的graph
     """
     try:
-        logger.debug(t("agent_loading", agent_name))
-        
         # 加载 agent 模块
         module = scanner.load_agent_module(agent_name)
         if not module:
-            logger.error(t("agent_load_failed", agent_name))
             return None, None
         
         # 获取 graph 对象
         if not hasattr(module, 'graph'):
-            logger.error(t("agent_no_graph", agent_name))
             return None, None
         
         graph = module.graph
@@ -568,12 +561,8 @@ def load_agent_graph(agent_name: str) -> Tuple[Optional[Any], Optional[Any]]:
             agent_info = scanner.get_agent_info(agent_name)
             if agent_info:
                 graph_with_memory = _build_graph_with_memory(agent_info)
-                if graph_with_memory:
-                    logger.debug(f"Successfully created graph with memory: {agent_name}")
-                else:
-                    logger.debug(f"Unable to create graph with memory: {agent_name}")
-        except Exception as e:
-            logger.debug(f"Failed to create graph with memory: {e}")
+        except Exception:
+            pass
         
         return graph, graph_with_memory
         

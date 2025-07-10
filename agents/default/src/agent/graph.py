@@ -43,7 +43,7 @@ async def chatbot_node(state: State):
             
             # 调试信息：显示可用的工具
             tool_names = [tool.name for tool in tools]
-            print(f"🔧 Agent 可用工具: {tool_names}")
+            print(f"🔧 {len(tool_names)} tools available")
             
             # 创建agent，添加系统提示和所有工具
             agent = create_agent("chatbot", llm, tools, system_prompt)
@@ -62,7 +62,7 @@ async def chatbot_node(state: State):
             
             # 调试信息：显示可用的工具
             tool_names = [tool.name for tool in tools]
-            print(f"🔧 Agent 可用工具 (仅本地): {tool_names}")
+            print(f"🔧 {len(tool_names)} tools available (local only)")
             
             # 创建agent，添加系统提示和所有工具
             agent = create_agent("chatbot", llm, tools, system_prompt)

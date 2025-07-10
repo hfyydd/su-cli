@@ -2,6 +2,8 @@
 
 import json
 import logging
+import subprocess
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +11,41 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import StdioConnection
 
 logger = logging.getLogger(__name__)
+
+
+class QuietStdioConnection(StdioConnection):
+    """自定义的 StdioConnection，减少日志输出"""
+    
+    def __init__(self, transport: str, command: str, args: List[str], env: Dict[str, str]):
+        # 添加环境变量以减少输出
+        quiet_env = env.copy()
+        quiet_env.update({
+            "NODE_ENV": "production",
+            "PYTHONUNBUFFERED": "1",
+            "MCP_VERBOSE": "false",
+            "QUIET": "true"
+        })
+        
+        super().__init__(transport=transport, command=command, args=args, env=quiet_env)
+    
+    async def __aenter__(self):
+        """重写连接建立过程以控制输出"""
+        # 临时重定向 stderr 来抑制 MCP 服务器的启动日志
+        import sys
+        import io
+        import contextlib
+        
+        # 创建一个空的输出缓冲区
+        null_buffer = io.StringIO()
+        
+        # 重定向 stderr 并建立连接
+        with contextlib.redirect_stderr(null_buffer):
+            try:
+                result = await super().__aenter__()
+                return result
+            except Exception:
+                # 如果重定向失败，则直接建立连接
+                return await super().__aenter__()
 
 
 class MCPToolManager:
@@ -55,11 +92,20 @@ class MCPToolManager:
         
         for server_name, server_config in mcp_servers.items():
             if "command" in server_config:
-                # 创建 stdio 连接对象
-                connection = StdioConnection(
+                # 修改 NPX 参数以减少日志输出
+                command = server_config["command"]
+                args = server_config.get("args", []).copy()
+                
+                # 如果是 npx 命令，添加静默参数
+                if command == "npx":
+                    # 在 npx 参数前添加 --silent 和 --no-install 以减少输出
+                    args = ["--silent", "--no-install"] + args
+                
+                # 使用自定义的 QuietStdioConnection 以减少日志输出
+                connection = QuietStdioConnection(
                     transport="stdio",
-                    command=server_config["command"],
-                    args=server_config.get("args", []),
+                    command=command,
+                    args=args,
                     env=server_config.get("env", {}),
                 )
                 client_config[server_name] = connection
@@ -81,11 +127,52 @@ class MCPToolManager:
                 logger.warning("没有有效的 MCP 服务器配置")
                 return []
             
-            # 创建 MultiServerMCPClient
-            self.client = MultiServerMCPClient(client_config)
+            # 创建 MultiServerMCPClient 并获取工具
+            # 临时重定向所有输出以抑制 MCP 服务器启动日志
+            import sys
+            import io
+            import contextlib
+            import os
             
-            # 获取工具
-            tools = await self.client.get_tools()
+            # 保存原始的 stdout 和 stderr
+            original_stdout = sys.stdout
+            original_stderr = sys.stderr
+            
+            try:
+                # 创建空的输出缓冲区
+                devnull = io.StringIO()
+                
+                # 临时重定向所有输出
+                sys.stdout = devnull
+                sys.stderr = devnull
+                
+                # 也尝试重定向进程级别的输出
+                with open(os.devnull, 'w') as devnull_file:
+                    # 临时重定向 stdout/stderr 到 /dev/null
+                    old_stdout = os.dup(1)
+                    old_stderr = os.dup(2)
+                    os.dup2(devnull_file.fileno(), 1)
+                    os.dup2(devnull_file.fileno(), 2)
+                    
+                    try:
+                        self.client = MultiServerMCPClient(client_config)
+                        tools = await self.client.get_tools()
+                    finally:
+                        # 恢复原始的 stdout/stderr
+                        os.dup2(old_stdout, 1)
+                        os.dup2(old_stderr, 2)
+                        os.close(old_stdout)
+                        os.close(old_stderr)
+                        
+            finally:
+                # 恢复 Python 的 stdout/stderr
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+            
+            # 显示简化的初始化信息
+            server_count = len(client_config)
+            if server_count > 0:
+                print(f"🔗 {server_count} MCP servers initialized")
             
             self.loaded_tools = tools
             logger.debug(f"总共加载了 {len(tools)} 个 MCP 工具")
