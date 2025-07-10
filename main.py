@@ -6,6 +6,8 @@ import os
 import json
 import importlib
 import re
+import signal
+import time
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple
 
@@ -128,6 +130,8 @@ I18N = {
         
         # General
         "goodbye": "👋 Thank you for using Su-Cli, goodbye!",
+        "graceful_exit": "Gracefully exiting Su-Cli...",
+        "force_exit": "Force exit...",
         "user_label": "USER",
         "assistant_label": "Assistant",
         "processing": "Processing...",
@@ -241,6 +245,8 @@ I18N = {
         
         # General
         "goodbye": "👋 感谢使用 Su-Cli，再见！",
+        "graceful_exit": "正在优雅退出 Su-Cli...",
+        "force_exit": "强制退出...",
         "user_label": "用户",
         "assistant_label": "助手",
         "processing": "正在处理...",
@@ -311,6 +317,78 @@ prompt_style = CONFIG["DEFAULT_PROMPT_STYLE"]
 current_language = CONFIG["DEFAULT_LANGUAGE"]
 current_thread_id = str(uuid.uuid4())
 recent_tool_messages = []  # 存储最近的工具调用消息
+is_exiting = False  # 退出状态标志
+
+
+def graceful_exit(signum=None, frame=None):
+    """
+    优雅退出处理函数
+    
+    Args:
+        signum: 信号编号
+        frame: 当前堆栈帧
+    """
+    global is_exiting
+    
+    if is_exiting:
+        # 如果已经在退出过程中，强制退出
+        console.print(f"\n[red]{t('force_exit')}[/red]")
+        os._exit(0)
+    
+    is_exiting = True
+    
+    try:
+        # 清除当前行并移动光标
+        console.print("\n")
+        
+        # 创建优雅的退出动画
+        exit_text = GradientText(
+            t('graceful_exit'),
+            colors=["#f093fb", "#f5576c", "#4facfe"]
+        )
+        
+        # 显示退出提示
+        with console.status(exit_text, spinner="dots2"):
+            time.sleep(1.0)  # 短暂停顿让用户看到提示
+        
+        # 显示告别消息
+        goodbye_text = GradientText(
+            t('goodbye'),
+            colors=["#667eea", "#764ba2", "#f093fb"]
+        )
+        
+        farewell_panel = Panel(
+            Align.center(goodbye_text),
+            style="dim blue",
+            border_style="dim cyan",
+            padding=(1, 2)
+        )
+        
+        console.print(farewell_panel)
+        console.print()
+        
+    except Exception:
+        # 如果显示过程中出错，直接退出
+        console.print(f"\n{t('goodbye')}")
+    
+    finally:
+        # 确保程序退出
+        os._exit(0)
+
+
+def setup_signal_handlers():
+    """设置信号处理器"""
+    try:
+        # 设置 SIGINT (Ctrl+C) 处理器
+        signal.signal(signal.SIGINT, graceful_exit)
+        
+        # 在支持的系统上设置 SIGTERM 处理器
+        if hasattr(signal, 'SIGTERM'):
+            signal.signal(signal.SIGTERM, graceful_exit)
+            
+    except (OSError, ValueError) as e:
+        # 在某些环境中可能无法设置信号处理器
+        logger.debug(f"无法设置信号处理器: {e}")
 
 
 def t(key: str, *args, **kwargs) -> str:
@@ -403,7 +481,8 @@ def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "mode
         return user_input
         
     except (KeyboardInterrupt, EOFError):
-        console.print(f"\n{t('goodbye')}")
+        # 如果在输入过程中按下 Ctrl+C，触发优雅退出
+        graceful_exit()
         return "/exit"
 
 
@@ -728,6 +807,10 @@ async def process_stream_chunks(graph, state, config):
     
     try:
         async for chunk in graph.astream(state, config=config):
+            # 检查是否正在退出
+            if is_exiting:
+                break
+                
             # 检查是否有中断
             if '__interrupt__' in chunk:
                 current_interrupt = chunk['__interrupt__'][0]
@@ -852,7 +935,8 @@ def handle_user_interrupt(interrupt_data) -> Optional[str]:
                 return "[REJECTED]"
             
     except (KeyboardInterrupt, EOFError):
-        console.print(f"\n[yellow]{t('confirm_cancelled')}[/yellow]")
+        # 在确认过程中按下 Ctrl+C，触发优雅退出
+        graceful_exit()
         return None
 
 
@@ -1457,6 +1541,9 @@ def _set_language(lang: str):
 async def main():
     """主函数"""
     
+    # 设置信号处理器
+    setup_signal_handlers()
+    
     # 显示欢迎界面
     create_welcome_screen()
     
@@ -1467,14 +1554,18 @@ async def main():
     console.print()
     
     # 主循环 - 处理用户输入
-    while True:
+    while True and not is_exiting:
         try:
             # 使用美观的命令行提示符
             user_input = create_beautiful_prompt(current_agent, prompt_style)
             
+            # 检查是否正在退出
+            if is_exiting:
+                break
+            
             # 处理退出命令
             if user_input in ["/exit", "/q"]:
-                console.print(f"\n{t('goodbye')}")
+                graceful_exit()
                 break
             
             # 处理命令
@@ -1482,19 +1573,27 @@ async def main():
             if not should_continue:
                 break
                 
-        except KeyboardInterrupt:
-            console.print(f"\n{t('goodbye')}")
-            break
         except EOFError:
-            console.print(f"\n{t('goodbye')}")
+            # EOF (Ctrl+D) 也触发优雅退出
+            graceful_exit()
             break
+        except Exception as e:
+            # 处理其他意外错误
+            if not is_exiting:
+                logger.error(f"主循环发生错误: {e}", exc_info=True)
+                console.print(f"❌ [red]发生错误: {e}[/red]")
+                console.print("[yellow]程序继续运行，如需退出请按 Ctrl+C[/yellow]")
 
 def run_main():
     """运行主函数的包装器"""
     try:
         asyncio.run(main())
-    except KeyboardInterrupt:
-        console.print(f"\n{t('goodbye')}")
+    except Exception as e:
+        # 处理意外错误
+        if not is_exiting:
+            logger.error(f"程序异常退出: {e}", exc_info=True)
+            console.print(f"❌ [red]程序异常退出: {e}[/red]")
+        graceful_exit()
 
 if __name__ == "__main__":
     run_main()
