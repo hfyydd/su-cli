@@ -23,6 +23,16 @@ from rich.layout import Layout
 from rich.box import ROUNDED
 from rich_gradient import Text as GradientText
 
+# 导入自动补全模块
+from autocomplete import (
+    get_auto_suggest, 
+    get_prompt_config,
+    update_completer_agents, 
+    update_completer_tool_count,
+    COMPLETION_STYLES,
+    PROMPT_TOOLKIT_AVAILABLE
+)
+
 # 提示工具包将按需导入
 
 # 国际化配置
@@ -547,14 +557,30 @@ def _get_modern_input(agent_display: str) -> str:
     
     console.print(first_line)
     
-    # 使用同步输入避免事件循环冲突
+    # 使用自动补全的输入
     try:
-        from prompt_toolkit import prompt
-        from prompt_toolkit.history import InMemoryHistory
-        # 在同步上下文中使用 prompt_toolkit
-        import nest_asyncio
-        nest_asyncio.apply()
-        return prompt("└─ ❯ ", history=InMemoryHistory()).strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            from prompt_toolkit import prompt
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.styles import Style
+            import nest_asyncio
+            nest_asyncio.apply()
+            
+            # 创建自定义样式，包含自动建议样式
+            style = Style.from_dict(COMPLETION_STYLES)
+            
+            # 获取完整的 prompt 配置
+            config = get_prompt_config()
+            
+            return prompt(
+                "└─ ❯ ", 
+                history=InMemoryHistory(),
+                auto_suggest=config['auto_suggest'],
+                key_bindings=config['key_bindings'],
+                style=style
+            ).strip()
+        else:
+            raise ImportError("prompt_toolkit not available")
     except (ImportError, RuntimeError):
         # Fallback 使用 rich prompt
         from rich.prompt import Prompt
@@ -569,11 +595,28 @@ def _get_minimal_input(agent_display: str) -> str:
         prompt_text = "su ❯ "
     
     try:
-        from prompt_toolkit import prompt
-        from prompt_toolkit.history import InMemoryHistory
-        import nest_asyncio
-        nest_asyncio.apply()
-        return prompt(prompt_text, history=InMemoryHistory()).strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            from prompt_toolkit import prompt
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.styles import Style
+            import nest_asyncio
+            nest_asyncio.apply()
+            
+            # 创建自定义样式，包含自动建议样式
+            style = Style.from_dict(COMPLETION_STYLES)
+            
+            # 获取完整的 prompt 配置
+            config = get_prompt_config()
+            
+            return prompt(
+                prompt_text,
+                history=InMemoryHistory(),
+                auto_suggest=config['auto_suggest'],
+                key_bindings=config['key_bindings'],
+                style=style
+            ).strip()
+        else:
+            raise ImportError("prompt_toolkit not available")
     except (ImportError, RuntimeError):
         from rich.prompt import Prompt
         return Prompt.ask(prompt_text).strip()
@@ -587,9 +630,26 @@ def _get_classic_input(agent_display: str) -> str:
         prompt_text = "[SuCli]$ "
     
     try:
-        from prompt_toolkit import prompt
-        from prompt_toolkit.history import InMemoryHistory
-        return prompt(prompt_text, history=InMemoryHistory()).strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            from prompt_toolkit import prompt
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.styles import Style
+            
+            # 创建自定义样式，包含自动建议样式
+            style = Style.from_dict(COMPLETION_STYLES)
+            
+            # 获取完整的 prompt 配置
+            config = get_prompt_config()
+            
+            return prompt(
+                prompt_text,
+                history=InMemoryHistory(),
+                auto_suggest=config['auto_suggest'],
+                key_bindings=config['key_bindings'],
+                style=style
+            ).strip()
+        else:
+            raise ImportError("prompt_toolkit not available")
     except ImportError:
         from rich.prompt import Prompt
         return Prompt.ask(prompt_text).strip()
@@ -603,9 +663,26 @@ def _get_colorful_input(agent_display: str) -> str:
         prompt_text = "🚀 SuCli ➤ "
     
     try:
-        from prompt_toolkit import prompt
-        from prompt_toolkit.history import InMemoryHistory
-        return prompt(prompt_text, history=InMemoryHistory()).strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            from prompt_toolkit import prompt
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.styles import Style
+            
+            # 创建自定义样式，包含自动建议样式
+            style = Style.from_dict(COMPLETION_STYLES)
+            
+            # 获取完整的 prompt 配置
+            config = get_prompt_config()
+            
+            return prompt(
+                prompt_text,
+                history=InMemoryHistory(),
+                auto_suggest=config['auto_suggest'],
+                key_bindings=config['key_bindings'],
+                style=style
+            ).strip()
+        else:
+            raise ImportError("prompt_toolkit not available")
     except ImportError:
         from rich.prompt import Prompt
         return Prompt.ask(prompt_text).strip()
@@ -614,9 +691,26 @@ def _get_colorful_input(agent_display: str) -> str:
 def _get_default_input(agent_display: str) -> str:
     """默认输入方式"""
     try:
-        from prompt_toolkit import prompt
-        from prompt_toolkit.history import InMemoryHistory
-        return prompt("SuCli > ", history=InMemoryHistory()).strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            from prompt_toolkit import prompt
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.styles import Style
+            
+            # 创建自定义样式，包含自动建议样式
+            style = Style.from_dict(COMPLETION_STYLES)
+            
+            # 获取完整的 prompt 配置
+            config = get_prompt_config()
+            
+            return prompt(
+                "SuCli > ",
+                history=InMemoryHistory(),
+                auto_suggest=config['auto_suggest'],
+                key_bindings=config['key_bindings'],
+                style=style
+            ).strip()
+        else:
+            raise ImportError("prompt_toolkit not available")
     except ImportError:
         from rich.prompt import Prompt
         return Prompt.ask("SuCli > ").strip()
@@ -635,6 +729,9 @@ def initialize_agent_system() -> bool:
         if not available_agents:
             console.print(f"❌ [red]{t('no_agents')}[/red]")
             return False
+        
+        # 更新补全器的 agents 列表
+        update_completer_agents(available_agents)
         
         # 默认选择 'default' agent，如果不存在则选择第一个 agent
         if "default" in available_agents:
@@ -1094,6 +1191,9 @@ def display_tool_messages_summary(tool_messages: List[Dict[str, Any]]):
         return
     
     console.print()
+    
+    # 更新补全器的工具消息数量
+    update_completer_tool_count(len(tool_messages))
     
     # 按node分组工具消息
     tool_groups = {}
