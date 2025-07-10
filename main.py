@@ -41,7 +41,7 @@ I18N = {
         # Welcome and titles
         "welcome_title": "🚀 Welcome to Su-Cli command line tool!",
         "welcome_subtitle": "A powerful and simple command line assistant", 
-        "quick_start_guide": "✨ Quick Start Guide ✨",
+        "quick_start_guide": "✨ Quick Start✨",
         "tips": [
             "🤖 Chat with Agent",
             "🔗 Support MCP Protocol",
@@ -66,6 +66,7 @@ I18N = {
   • [green]/style <name>[/green] - Switch to specified style
   • [green]/lang[/green] - Show current language settings
   • [green]/set_lang <lang>[/green] - Set language (en/zh)
+  • [green]/tool[/green] - Toggle tool call results display
   • [green]show <n>[/green] - View detailed results of the nth tool call
 
 🔧 [yellow]Tool Results Viewer:[/yellow]
@@ -151,12 +152,18 @@ I18N = {
         "thinking": "Thinking...",
         "confirmed": "Confirmed",
         "rejected": "Rejected",
+        
+        # Tool display settings
+        "tool_display_title": "🔧 Tool Display Settings",
+        "tool_display_enabled": "Tool call results display is now [green]enabled[/green]",
+        "tool_display_disabled": "Tool call results display is now [red]disabled[/red]",
+        "tool_display_status": "Current status: Tool call results display is {}",
     },
     "zh": {
         # Welcome and titles
         "welcome_title": "🚀 欢迎使用 Su-Cli 命令行工具！",
         "welcome_subtitle": "一个强大而简洁的命令行助手",
-        "quick_start_guide": "✨ 快速开始指南 ✨",
+        "quick_start_guide": "✨ 快速开始✨",
         "tips": [
             "🤖 与Agent 对话交流",
             "🔗 支持 MCP 协议集成", 
@@ -181,6 +188,7 @@ I18N = {
   • [green]/style <name>[/green] - 切换到指定风格
   • [green]/lang[/green] - 显示当前语言设置
   • [green]/set_lang <lang>[/green] - 设置语言 (en/zh)
+  • [green]/tool[/green] - 切换工具调用结果显示开关
   • [green]show <n>[/green] - 查看第n个工具调用的详细结果
 
 🔧 [yellow]工具结果查看器：[/yellow]
@@ -266,6 +274,12 @@ I18N = {
         "thinking": "正在思考...",
         "confirmed": "已确认",
         "rejected": "已拒绝",
+        
+        # Tool display settings
+        "tool_display_title": "🔧 工具显示设置",
+        "tool_display_enabled": "工具调用结果显示已[green]启用[/green]",
+        "tool_display_disabled": "工具调用结果显示已[red]禁用[/red]",
+        "tool_display_status": "当前状态：工具调用结果显示{}",
     }
 }
 
@@ -291,6 +305,7 @@ CONFIG = {
     "STYLE_COMMANDS": ['/style', 'style'],
     "LANG_COMMANDS": ['/lang', 'lang'],
     "SHOW_COMMANDS": ['show'],
+    "TOOL_DISPLAY_COMMANDS": ['/tool_display', '/tool'],
 }
 
 # 设置日志级别和格式
@@ -328,6 +343,7 @@ current_language = CONFIG["DEFAULT_LANGUAGE"]
 current_thread_id = str(uuid.uuid4())
 recent_tool_messages = []  # 存储最近的工具调用消息
 is_exiting = False  # 退出状态标志
+show_tool_messages = False  # 控制是否显示工具调用结果的开关
 
 
 def graceful_exit(signum=None, frame=None):
@@ -478,15 +494,6 @@ def create_beautiful_prompt(agent_name: Optional[str] = None, style: str = "mode
     try:
         agent_display = _format_agent_name(agent_name)
         user_input = _get_styled_input(agent_display, style)
-        
-        # 显示用户输入（统一的回显样式）
-        if user_input:
-            console.print()
-            user_display = Text()
-            user_display.append("   💬 ", style="bright_blue")
-            user_display.append(user_input, style="white")
-            console.print(user_display)
-            console.print()
         
         return user_input
         
@@ -1351,7 +1358,8 @@ async def stream_agent_response(user_input: str) -> Optional[str]:
         # 处理工具消息
         global recent_tool_messages
         recent_tool_messages = tool_messages
-        if tool_messages:
+        # 工具调用结果显示开关控制 (使用 /tool 命令切换显示状态)
+        if tool_messages and show_tool_messages:
             display_tool_messages_summary(tool_messages)
         
         # 添加到对话历史
@@ -1494,6 +1502,8 @@ async def handle_command(command: str) -> bool:
         _set_language(command[10:].strip().lower())
     elif command.lower() in CONFIG["LANG_COMMANDS"]:
         _show_language()
+    elif command.lower() in CONFIG["TOOL_DISPLAY_COMMANDS"]:
+        _toggle_tool_display()
     elif command.lower().startswith('show '):
         # 处理show命令
         try:
@@ -1636,6 +1646,25 @@ def _set_language(lang: str):
     else:
         console.print(f"❌ [red]{t('lang_not_found', lang)}[/red]")
         console.print(f"💡 [yellow]{t('lang_available_list', ', '.join(get_available_languages()))}[/yellow]")
+
+
+def _toggle_tool_display():
+    """切换工具调用结果显示开关"""
+    global show_tool_messages
+    
+    show_tool_messages = not show_tool_messages
+    
+    if show_tool_messages:
+        console.print(f"✅ {t('tool_display_enabled')}")
+    else:
+        console.print(f"❌ {t('tool_display_disabled')}")
+    
+    # 显示当前状态
+    status = "[green]启用[/green]" if show_tool_messages else "[red]禁用[/red]"
+    if current_language == "en":
+        status = "[green]enabled[/green]" if show_tool_messages else "[red]disabled[/red]"
+    
+    console.print(f"💡 {t('tool_display_status', status)}")
 
 
 async def main():

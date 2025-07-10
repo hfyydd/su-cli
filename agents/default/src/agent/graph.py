@@ -20,65 +20,74 @@ llm = ChatOpenAI(
     temperature=0
 )
 
-async def chatbot_node(state: State):
-    """聊天机器人节点"""
+# 全局工具缓存
+_tools_cache = None
+_tools_initialized = False
+_mcp_manager = None
+
+async def _initialize_tools():
+    """初始化工具（只执行一次）"""
+    global _tools_cache, _tools_initialized, _mcp_manager
+    
+    if _tools_initialized:
+        # print(f"🔄 使用缓存的 {len(_tools_cache)} 个工具（跳过初始化）")
+        return _tools_cache
+    
+    # print("🔧 开始初始化工具...")
+    
     try:
-        from src.agent.mcp_utils import MCPToolManager
-        
         # 本地工具
         from src.agent.tools import get_current_time
         local_tools = [get_current_time]
         
-        # 使用 MCP 管理器获取 MCP 工具
-        mcp_manager = MCPToolManager()
-        client_config = mcp_manager._convert_config_for_client()
+        # 使用 MCP 管理器获取 MCP 工具 - 只创建一次并缓存
+        from src.agent.mcp_utils import MCPToolManager
+        _mcp_manager = MCPToolManager()
+        client_config = _mcp_manager._convert_config_for_client()
         
         if client_config:
-            # 使用 MultiServerMCPClient 直接调用 get_tools()
-            from langchain_mcp_adapters.client import MultiServerMCPClient
-            
-            client = MultiServerMCPClient(client_config)
-            mcp_tools = await client.get_tools()
-            tools = local_tools + mcp_tools
+            # 使用缓存的 MCP 管理器加载工具
+            mcp_tools = await _mcp_manager.load_tools()
+            _tools_cache = local_tools + mcp_tools
             
             # 调试信息：显示可用的工具
-            tool_names = [tool.name for tool in tools]
-            print(f"🔧 {len(tool_names)} tools available")
-            
-            # 创建agent，添加系统提示和所有工具
-            agent = create_agent("chatbot", llm, tools, system_prompt)
-            
-            # 执行 agent 并返回结果
-            response = await agent.ainvoke(state)
-            
-            if isinstance(response, dict) and 'messages' in response:
-                new_messages = response['messages'][len(state['messages']):]
-                return {"messages": new_messages}
-            else:
-                return response
+            tool_names = [tool.name for tool in _tools_cache]
+            # print(f"✅ {len(tool_names)} tools initialized (local + MCP)")
         else:
             # 没有 MCP 配置，只使用本地工具
-            tools = local_tools
-            
-            # 调试信息：显示可用的工具
-            tool_names = [tool.name for tool in tools]
-            print(f"🔧 {len(tool_names)} tools available (local only)")
-            
-            # 创建agent，添加系统提示和所有工具
-            agent = create_agent("chatbot", llm, tools, system_prompt)
+            _tools_cache = local_tools
+            tool_names = [tool.name for tool in _tools_cache]
+            # print(f"✅ {len(tool_names)} tools initialized (local only)")
         
-            # create_react_agent需要传入整个状态，而不是消息列表
-            response = await agent.ainvoke(state)
-            
-            # create_react_agent返回字典格式 {'messages': [...]}
-            # 需要提取新消息（agent的回复），而不是替换整个消息列表
-            if isinstance(response, dict) and 'messages' in response:
-                # 获取新消息（通常是最后一条，即agent的回复）
-                new_messages = response['messages'][len(state['messages']):]
-                return {"messages": new_messages}
-            else:
-                # 如果格式不符合预期，直接返回
-                return response
+        _tools_initialized = True
+        # print("🎯 工具初始化完成，设置缓存标志")
+        return _tools_cache
+        
+    except Exception as e:
+        print(f"❌ 工具初始化失败: {str(e)}")
+        # fallback 到本地工具
+        from src.agent.tools import get_current_time
+        _tools_cache = [get_current_time]
+        _tools_initialized = True
+        return _tools_cache
+
+async def chatbot_node(state: State):
+    """聊天机器人节点"""
+    try:
+        # 获取缓存的工具（首次调用时初始化）
+        tools = await _initialize_tools()
+        
+        # 创建agent，添加系统提示和所有工具
+        agent = create_agent("chatbot", llm, tools, system_prompt)
+        
+        # 执行 agent 并返回结果
+        response = await agent.ainvoke(state)
+        
+        if isinstance(response, dict) and 'messages' in response:
+            new_messages = response['messages'][len(state['messages']):]
+            return {"messages": new_messages}
+        else:
+            return response
         
     except Exception as e:
         # 记录错误但不显示技术细节

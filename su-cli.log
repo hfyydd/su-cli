@@ -524,3 +524,5 @@ Traceback (most recent call last):
   File "/Users/hanfeng/.local/share/uv/python/cpython-3.13.3-macos-aarch64-none/lib/python3.13/asyncio/futures.py", line 199, in result
     raise self._exception.with_traceback(self._exception_tb)
 KeyboardInterrupt
+2025-07-10 17:35:22,648 - src.agent.mcp_utils - ERROR - 加载 MCP 工具失败: unhandled errors in a TaskGroup (1 sub-exception)
+2025-07-10 17:37:08,019 - src.agent.mcp_utils - ERROR - 加载 MCP 工具失败: unhandled errors in a TaskGroup (1 sub-exception)

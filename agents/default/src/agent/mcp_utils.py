@@ -114,6 +114,11 @@ class MCPToolManager:
     
     async def load_tools(self) -> List[Any]:
         """加载所有配置的 MCP 工具"""
+        # 如果已经加载过工具且客户端存在，直接返回缓存的工具
+        if self.loaded_tools and self.client:
+            logger.debug(f"返回缓存的 {len(self.loaded_tools)} 个 MCP 工具")
+            return self.loaded_tools
+        
         mcp_servers = self.config.get("mcpServers", {})
         if not mcp_servers:
             logger.debug("未配置 MCP 服务器")
@@ -172,7 +177,8 @@ class MCPToolManager:
             # 显示简化的初始化信息
             server_count = len(client_config)
             if server_count > 0:
-                print(f"🔗 {server_count} MCP servers initialized")
+                # print(f"🔗 {server_count} MCP servers initialized")
+                pass
             
             self.loaded_tools = tools
             logger.debug(f"总共加载了 {len(tools)} 个 MCP 工具")
